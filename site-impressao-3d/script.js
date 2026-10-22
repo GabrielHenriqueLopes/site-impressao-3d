@@ -1661,7 +1661,108 @@ function initAnimations() {
   });
   $$(".carousel-track").forEach((t) => io.observe(t));
 }
+/* =================================================================
+   Vida na tela principal
+   - adiciona os pigmentos e a linha da impressora ao fundo;
+   - demonstração automática: se ninguém mexer na peça, um "pincel
+     fantasma" pinta um trecho sozinho e a pintura some em seguida.
+     Para de vez assim que o visitante interage.
+   ================================================================= */
+function initHeroLife(reveal) {
+  const light = $(".hero-light");
+  if (light && !light.querySelector(".hero-orb")) {
+    light.insertAdjacentHTML(
+      "beforeend",
+      '<span class="hero-orb"></span><span class="hero-orb"></span><span class="hero-orb"></span><span class="hero-scan"></span>',
+    );
+  }
+  if (!reveal || !reveal.ready || prefersReducedMotion.matches) return;
 
+  const FIRST_DELAY = 1800; // espera antes da 1ª demonstração (ms)
+  const REPEAT_DELAY = 14000; // intervalo entre demonstrações (ms)
+  const DURATION = 2600; // duração de cada passada do pincel (ms)
+
+  const stage = reveal.stage;
+  let touched = false,
+    running = false,
+    visible = true,
+    timer = null;
+
+  const stop = () => {
+    touched = true;
+    clearTimeout(timer);
+  };
+  ["pointerenter", "pointerdown", "keydown"].forEach((ev) =>
+    stage.addEventListener(ev, stop, { passive: true }),
+  );
+  $$("[data-reveal-on], [data-reveal-off], [data-reveal-range]").forEach(
+    (el) => {
+      el.addEventListener("pointerdown", stop, { passive: true });
+      el.addEventListener("keydown", stop);
+    },
+  );
+
+  const schedule = (ms) => {
+    clearTimeout(timer);
+    if (!touched) timer = setTimeout(demo, ms);
+  };
+
+  function demo() {
+    if (touched || running) return;
+    if (!visible || document.hidden || reveal.fullTarget || reveal.wipe > 0)
+      return schedule(4000);
+    running = true;
+
+    const { fit, dpr } = reveal;
+    const cx = fit.x + fit.w * 0.5,
+      cy = fit.y + fit.h * 0.42;
+    const ax = fit.w * 0.2,
+      ay = fit.h * 0.16;
+    const t0 = performance.now();
+    reveal.brush.x = reveal.brush.lastX = null;
+    reveal.cursorEl.classList.add("is-visible", "is-ghost");
+
+    const step = (now) => {
+      if (touched) {
+        // visitante assumiu: devolve o controle
+        reveal.cursorEl.classList.remove("is-ghost");
+        running = false;
+        return;
+      }
+      const t = Math.min(1, (now - t0) / DURATION);
+      const a = t * Math.PI * 2;
+      // trajeto em "8" descendo pelo corpo do dragão
+      const x = cx + ax * Math.sin(a);
+      const y = cy + ay * Math.sin(2 * a) * 0.7 + ay * 1.6 * (t - 0.5);
+      reveal.pointer.x = x;
+      reveal.pointer.y = y;
+      reveal.pointer.inside = true;
+      reveal.cursorEl.style.setProperty("--cx", `${x / dpr}px`);
+      reveal.cursorEl.style.setProperty("--cy", `${y / dpr}px`);
+      reveal.start();
+
+      if (t < 1) {
+        requestAnimationFrame(step);
+        return;
+      }
+      reveal.pointer.inside = false;
+      reveal.cursorEl.classList.remove("is-visible", "is-ghost");
+      reveal.start();
+      running = false;
+      schedule(REPEAT_DELAY);
+    };
+    requestAnimationFrame(step);
+  }
+
+  // só demonstra quando a peça está visível na tela
+  new IntersectionObserver(
+    ([en]) => {
+      visible = en.isIntersecting;
+    },
+    { threshold: 0.4 },
+  ).observe(stage);
+  schedule(FIRST_DELAY);
+}
 /* =================================================================
    Inicialização
    ================================================================= */
@@ -1671,7 +1772,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initHeader();
 
   const reveal = new PaintReveal($("[data-reveal]"), SITE_CONFIG.hero);
-  reveal.init();
+  reveal.init().then(() => initHeroLife(reveal));
   window.__paintReveal = reveal; // útil para depuração no console
 
   initProducts();
