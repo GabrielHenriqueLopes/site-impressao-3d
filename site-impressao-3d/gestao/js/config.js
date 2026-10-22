@@ -10,5 +10,5 @@
 
    ⚠ NUNCA coloque aqui a chave "secret" / "service_role".
    ================================================================= */
-export const SUPABASE_URL = 'https://bgnxtyjrrguhdxtkqyfs.supabase.co/rest/v1/';
+export const SUPABASE_URL = 'https://bgnxtyjrrguhdxtkqyfs.supabase.co';
 export const SUPABASE_KEY = 'sb_publishable_e88hySebCdDLDr4DJ22CSw_byVJ0n60';
