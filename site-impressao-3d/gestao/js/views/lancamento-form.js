@@ -148,7 +148,7 @@ export function abrirLancamento(opts = {}) {
           } else if (form.repetir?.checked) {
             salvo = await criarRecorrente(d);
           } else {
-            salvo = await criar('lancamentos', { id: novoId(), ...d });
+            salvo = await criar('lancamentos', { id: novoId(), ...d, ...(v.pedido_id && !l ? { pedido_id: v.pedido_id } : {}) });
             toast(`${tipo === 'receita' ? 'Receita' : 'Despesa'} registrada.`);
           }
           fechar('ok');

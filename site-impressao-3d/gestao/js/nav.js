@@ -1,5 +1,5 @@
 /* Navegação por hash: #/modulo?filtro=valor */
-export const MODULOS = ['', 'lancamentos', 'contas', 'orcamento', 'resultados', 'metas', 'config'];
+export const MODULOS = ['', 'pedidos', 'avisos', 'lancamentos', 'contas', 'orcamento', 'resultados', 'metas', 'config'];
 export function rotaAtual() {
   const h = location.hash.replace(/^#\/?/, '');
   const [nome, q = ''] = h.split('?');

@@ -5,10 +5,11 @@ import * as F from '../finance.js';
 import { brl, centavos, esc, dataBR, dataHora, hoje, GRUPOS, GRUPOS_RECEITA, GRUPOS_DESPESA, PAPEIS, FORMAS, valorInput } from '../format.js';
 import { icon, modal, campo, ligarDinheiro, dinheiro, erroCampo, limparErros, ocupado, toast, erro, confirmar, vazio, baixarArquivo, $ } from '../ui.js';
 import { trocarParams } from '../nav.js';
+import { custoKgFilamento } from '../pedidos-calc.js';
 import { historico, descreverAuditoria } from './lancamento-form.js';
 
 let el; let aba = 'negocio'; let tipoCat = 'despesa'; let filtroAud = '';
-const ABAS = [['negocio', 'Negócio'], ['contas', 'Contas'], ['categorias', 'Categorias'], ['recorrencias', 'Recorrências'], ['usuarios', 'Usuários'], ['historico', 'Histórico'], ['backup', 'Backup'], ['conta', 'Minha senha']];
+const ABAS = [['negocio', 'Negócio'], ['producao', 'Produção'], ['contas', 'Contas'], ['categorias', 'Categorias'], ['recorrencias', 'Recorrências'], ['usuarios', 'Usuários'], ['historico', 'Histórico'], ['backup', 'Backup'], ['conta', 'Minha senha']];
 
 export function render(root, params) { el = root; aba = ABAS.some(([k]) => k === params.aba) ? params.aba : 'negocio'; desenhar(); }
 export const atualizar = () => { if (aba !== 'historico' && !el.querySelector('[data-sujo="1"]')) desenhar(); };
@@ -17,7 +18,7 @@ function desenhar() {
   el.innerHTML = `<div class="tabs tabs-scroll" role="tablist">${ABAS.map(([k, t]) => `<button type="button" role="tab" aria-selected="${aba === k}" data-aba="${k}">${t}</button>`).join('')}</div><div class="tab-body" data-body></div>`;
   el.querySelectorAll('[data-aba]').forEach((b) => b.addEventListener('click', () => { aba = b.dataset.aba; trocarParams({ aba }); desenhar(); }));
   const body = el.querySelector('[data-body]');
-  ({ negocio, contas, categorias, recorrencias, usuarios, historico: auditoria, backup, conta: minhaConta })[aba](body);
+  ({ negocio, producao, contas, categorias, recorrencias, usuarios, historico: auditoria, backup, conta: minhaConta })[aba](body);
 }
 
 const soLeitura = (quem = 'administradores e gerentes') => `<p class="note">${icon('lock')} Somente ${quem} podem alterar esta área.</p>`;
@@ -55,6 +56,93 @@ function negocio(b) {
       if (!(d.alerta_vencimento_dias >= 1 && d.alerta_vencimento_dias <= 60)) return erroCampo(f, 'alerta_vencimento_dias', 'Use um valor entre 1 e 60.');
       try { await salvarEmpresa(d); toast('Dados salvos.'); } catch (e) { erro(e); }
     });
+  });
+}
+
+/* ---------------- Produção: lembretes, energia e filamentos ---------------- */
+const decBR = (v) => (v === null || v === undefined ? '' : String(v).replace('.', ','));
+const numBR = (s) => { const t = String(s ?? '').trim().replace(',', '.'); if (!t) return null; const n = Number(t); return Number.isFinite(n) ? n : NaN; };
+function producao(b) {
+  if (!S.moduloPedidos) { b.innerHTML = '<p class="note">Rode de novo o <code>schema.sql</code> no Supabase para ativar pedidos e produção.</p>'; return; }
+  const e = S.empresa; const ed = pode('admin');
+  const fils = S.filamentos.slice().sort((a, x) => Number(x.ativo) - Number(a.ativo) || a.tipo.localeCompare(x.tipo));
+  b.innerHTML = `<section class="card narrow">
+    <div class="card-head"><h2>Prazos e lembretes</h2></div>
+    ${ed ? '' : soLeitura('administradores')}
+    <form class="form" data-prod novalidate>
+      <div class="grid-2">
+        ${campo({ nome: 'lembrete_horas', rotulo: 'Avisar com antecedência de', valor: e.lembrete_horas ?? 24, opcoes: [[12, '12 horas'], [24, '24 horas (1 dia)'], [48, '48 horas (2 dias)'], [72, '3 dias'], [120, '5 dias'], [168, '7 dias']].map(([v, t]) => ({ valor: v, rotulo: t })), attrs: ed ? '' : 'disabled', ajuda: 'Vale para "prazo chegando" e "hora de começar".' })}
+        ${campo({ nome: 'folga_dias', rotulo: 'Folga para acabamento e envio (dias)', tipo: 'number', valor: e.folga_dias ?? 1, attrs: `min="0" max="30" ${ed ? '' : 'disabled'}`, ajuda: 'O app sugere começar a imprimir até: prazo − tempo de impressão − folga.' })}
+      </div>
+      <h3 class="h-sm">Energia (opcional, para calcular o custo sozinho)</h3>
+      <div class="grid-2">
+        ${campo({ nome: 'impressora_watts', rotulo: 'Potência média da impressora (W)', tipo: 'text', valor: decBR(e.impressora_watts), attrs: `inputmode="decimal" placeholder="Ex.: 150" ${ed ? '' : 'disabled'}`, ajuda: 'Veja na etiqueta ou no manual. Impressoras FDM pequenas costumam usar entre 100 e 300 W.' })}
+        ${campo({ nome: 'tarifa_kwh', rotulo: 'Tarifa da energia (R$ por kWh)', tipo: 'text', valor: decBR(e.tarifa_kwh), attrs: `inputmode="decimal" placeholder="Ex.: 0,95" ${ed ? '' : 'disabled'}`, ajuda: 'Está na conta de luz (valor total ÷ kWh consumidos).' })}
+      </div>
+      ${ed ? '<div class="form-actions"><button type="submit" class="btn btn-accent">Salvar</button></div>' : ''}
+    </form></section>
+  <section class="card">
+    <div class="card-head"><h2>Filamentos</h2>${podeGerir() ? `<button type="button" class="btn btn-sm btn-accent" data-novo-fil>${icon('plus')} Novo filamento</button>` : ''}</div>
+    <p class="muted small">Cadastre os rolos que vocês usam com o preço pago. No pedido, basta escolher o filamento e o custo por grama é calculado: <strong>preço do rolo ÷ peso do rolo</strong>.</p>
+    ${fils.length ? `<div class="table-wrap"><table class="tbl tbl-cards"><thead><tr><th>Filamento</th><th class="num">Rolo</th><th class="num">Preço do rolo</th><th class="num">Por kg</th><th class="num">Por grama</th><th></th></tr></thead><tbody>
+      ${fils.map((f) => { const kg = custoKgFilamento(f); return `<tr class="${f.ativo ? '' : 'row-off'}"><td data-th="Filamento" class="td-main"><strong>${esc(f.tipo)}${f.cor ? ` ${esc(f.cor)}` : ''}</strong><small>${esc(f.marca || '')}${f.ativo ? '' : ' · inativo'}</small></td>
+        <td data-th="Rolo" class="num">${Number(f.peso_rolo_g).toLocaleString('pt-BR')} g</td><td data-th="Preço do rolo" class="num">${brl(centavos(f.preco_rolo))}</td>
+        <td data-th="Por kg" class="num strong">${brl(kg)}</td><td data-th="Por grama" class="num">R$ ${(kg / 100000).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</td>
+        <td class="actions">${podeGerir() ? `<button type="button" class="btn btn-sm btn-ghost" data-ed-fil="${f.id}">${icon('edit')}<span>Editar</span></button>` : ''}</td></tr>`; }).join('')}
+    </tbody></table></div>` : vazio({ icone: 'printer', titulo: 'Nenhum filamento cadastrado', texto: 'Ex.: PLA preto, rolo de 1 kg, R$ 99,90.' })}
+  </section>`;
+  const f = b.querySelector('[data-prod]');
+  f.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    ocupado(f.querySelector('[type=submit]'), async () => {
+      limparErros(f);
+      const d = { lembrete_horas: Number(f.lembrete_horas.value), folga_dias: Number(f.folga_dias.value), impressora_watts: numBR(f.impressora_watts.value), tarifa_kwh: numBR(f.tarifa_kwh.value) };
+      if (!(d.folga_dias >= 0 && d.folga_dias <= 30)) return erroCampo(f, 'folga_dias', 'Use de 0 a 30 dias.');
+      if (Number.isNaN(d.impressora_watts) || (d.impressora_watts !== null && !(d.impressora_watts >= 1 && d.impressora_watts <= 5000))) return erroCampo(f, 'impressora_watts', 'Use um valor entre 1 e 5000 W.');
+      if (Number.isNaN(d.tarifa_kwh) || (d.tarifa_kwh !== null && !(d.tarifa_kwh >= 0.01 && d.tarifa_kwh <= 10))) return erroCampo(f, 'tarifa_kwh', 'Use um valor como 0,95.');
+      try { await salvarEmpresa(d); toast('Ajustes de produção salvos.'); } catch (ex) { erro(ex); }
+    });
+  });
+  b.querySelector('[data-novo-fil]')?.addEventListener('click', () => formFilamento());
+  b.querySelectorAll('[data-ed-fil]').forEach((x) => x.addEventListener('click', () => formFilamento(S.filamentos.find((y) => y.id === x.dataset.edFil))));
+}
+
+function formFilamento(fil = null) {
+  modal({
+    titulo: fil ? 'Editar filamento' : 'Novo filamento', largura: 'sm',
+    corpo: `<form class="form" data-f novalidate>
+      <div class="grid-2">
+        ${campo({ nome: 'tipo', rotulo: 'Tipo', valor: fil?.tipo || '', obrig: true, attrs: 'maxlength="20" list="tipos-fil" placeholder="PLA"' })}
+        ${campo({ nome: 'cor', rotulo: 'Cor', valor: fil?.cor || '', attrs: 'maxlength="40" placeholder="Preto"' })}
+        ${campo({ nome: 'marca', rotulo: 'Marca (opcional)', valor: fil?.marca || '', attrs: 'maxlength="40"', cls: 'span-2' })}
+        ${campo({ nome: 'preco_rolo', rotulo: 'Preço do rolo', tipo: 'dinheiro', valor: fil ? centavos(fil.preco_rolo) : '', obrig: true })}
+        ${campo({ nome: 'peso_rolo_g', rotulo: 'Peso do rolo (g)', tipo: 'number', valor: fil?.peso_rolo_g ?? 1000, obrig: true, attrs: 'min="1" max="100000" step="1"' })}
+      </div>
+      <p class="muted small" data-custo></p>
+      ${fil ? `<label class="check"><input type="checkbox" name="ativo" ${fil.ativo ? 'checked' : ''}> <span>Ativo (aparece nos pedidos)</span></label>` : ''}
+      <datalist id="tipos-fil">${['PLA', 'PLA+', 'PETG', 'ABS', 'ASA', 'TPU', 'Resina'].map((t) => `<option value="${t}">`).join('')}</datalist>
+    </form>`,
+    rodape: `${fil ? `<button type="button" class="btn btn-ghost perigo mr-auto" data-del>${icon('trash')} Excluir</button>` : ''}<button type="button" class="btn btn-ghost" data-fechar>Cancelar</button><button type="button" class="btn btn-accent" data-ok>Salvar</button>`,
+    aoAbrir: (dlg, fechar) => {
+      const f = $('[data-f]', dlg); ligarDinheiro(f);
+      const mostrar = () => { const kg = custoKgFilamento({ preco_rolo: dinheiro(f, 'preco_rolo') / 100, peso_rolo_g: Number(f.peso_rolo_g.value) }); $('[data-custo]', dlg).textContent = kg ? `= ${brl(kg)} por kg · R$ ${(kg / 100000).toLocaleString('pt-BR', { minimumFractionDigits: 3 })} por grama` : ''; };
+      f.addEventListener('input', mostrar); mostrar();
+      $('[data-del]', dlg)?.addEventListener('click', async () => {
+        const usos = S.pedidos.filter((p) => p.filamento_id === fil.id).length;
+        if (!(await confirmar({ titulo: 'Excluir filamento?', texto: usos ? `Ele aparece em ${usos} pedido(s). Os pedidos mantêm o tipo, a cor e o preço já registrados. Para só esconder da lista, prefira desativar.` : 'O filamento será removido do catálogo.', botao: 'Excluir', perigo: true }))) return;
+        try { await remover('filamentos', fil.id); toast('Filamento excluído.'); fechar(''); } catch (ex) { erro(ex); }
+      });
+      $('[data-ok]', dlg).addEventListener('click', (ev) => ocupado(ev.currentTarget, async () => {
+        limparErros(f);
+        const preco = dinheiro(f, 'preco_rolo');
+        const d = { tipo: f.tipo.value.trim().toUpperCase().replace('RESINA', 'Resina'), cor: f.cor.value.trim(), marca: f.marca.value.trim() || null, preco_rolo: preco / 100, peso_rolo_g: Number(f.peso_rolo_g.value) };
+        if (!d.tipo) return erroCampo(f, 'tipo', 'Informe o tipo (ex.: PLA).');
+        if (!Number.isFinite(preco) || preco <= 0) return erroCampo(f, 'preco_rolo', 'Informe o preço pago no rolo.');
+        if (!(d.peso_rolo_g > 0 && d.peso_rolo_g <= 100000)) return erroCampo(f, 'peso_rolo_g', 'Informe o peso em gramas (1 kg = 1000).');
+        if (fil) d.ativo = f.ativo.checked;
+        try { if (fil) await alterar('filamentos', fil.id, d); else await criar('filamentos', { id: novoId(), ...d }); toast('Filamento salvo.'); fechar('ok'); } catch (ex) { erro(ex); }
+      }));
+    },
   });
 }
 
@@ -287,7 +375,7 @@ function usuarios(b) {
 }
 
 /* ---------------- Histórico (auditoria) ---------------- */
-const NOMES_T = { lancamentos: 'Lançamentos', categorias: 'Categorias', contas: 'Contas', orcamentos: 'Orçamento', metas: 'Metas', recorrencias: 'Recorrências', perfis: 'Usuários', empresa: 'Negócio' };
+const NOMES_T = { pedidos: 'Pedidos', filamentos: 'Filamentos', lancamentos: 'Lançamentos', categorias: 'Categorias', contas: 'Contas', orcamentos: 'Orçamento', metas: 'Metas', recorrencias: 'Recorrências', perfis: 'Usuários', empresa: 'Negócio' };
 async function auditoria(b) {
   if (!podeGerir()) { b.innerHTML = soLeitura(); return; }
   b.innerHTML = `<section class="card"><div class="card-head"><h2>Histórico de alterações</h2>
@@ -306,7 +394,7 @@ async function auditoria(b) {
 }
 
 /* ---------------- Backup ---------------- */
-const TABELAS_BKP = ['empresa', 'contas', 'categorias', 'recorrencias', 'lancamentos', 'orcamentos', 'metas'];
+const TABELAS_BKP = ['empresa', 'contas', 'categorias', 'recorrencias', 'filamentos', 'pedidos', 'lancamentos', 'orcamentos', 'metas'];
 function backup(b) {
   b.innerHTML = `<section class="card narrow"><div class="card-head"><h2>Cópia de segurança</h2></div>
     <p>O plano gratuito do Supabase não inclui backups automáticos para download. Baixe uma cópia completa com frequência (por exemplo, toda semana) e guarde em um lugar seguro, como o Google Drive.</p>
@@ -322,7 +410,7 @@ function backup(b) {
   b.querySelector('[data-json]').addEventListener('click', (e) => ocupado(e.currentTarget, async () => {
     try {
       const dados = {};
-      for (const t of TABELAS_BKP) dados[t] = await api.listar(t);
+      for (const t of TABELAS_BKP) { if (!S.moduloPedidos && ['filamentos', 'pedidos'].includes(t)) continue; dados[t] = await api.listar(t); }
       const arq = { app: 'gestao-atelie', versao: 1, gerado_em: new Date().toISOString(), dados };
       baixarArquivo(`backup-gestao-${hoje()}.json`, JSON.stringify(arq, null, 1), 'application/json');
       try { localStorage.setItem('gestao.ultimoBackup', new Date().toISOString()); } catch { /* ok */ }

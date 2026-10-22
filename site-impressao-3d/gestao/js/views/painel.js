@@ -7,6 +7,30 @@ import { colunas, medidor } from '../charts.js';
 import { filtroHTML, ligarFiltro, resolver, rotulo } from './periodo.js';
 import { trocarParams } from '../nav.js';
 import { abrirLancamento, baixar } from './lancamento-form.js';
+import { resumo as resumoPedidos, situacao as sitPedido, ordenarFila, ATIVOS, STATUS } from '../pedidos-calc.js';
+import { fmtGramas } from './pedido-form.js';
+
+function cardProducao() {
+  if (!S.moduloPedidos) return '';
+  const r = resumoPedidos(S.pedidos, S.empresa);
+  const fila = ordenarFila(S.pedidos.filter((p) => ATIVOS.includes(p.status)), S.empresa).slice(0, 4);
+  return `<section class="card">
+    <div class="card-head"><h2>${icon('printer')} Produção</h2><a class="btn-link" href="#/pedidos">Fila de pedidos</a></div>
+    <div class="prod-strip">
+      <a href="#/pedidos"><strong>${r.aguardando}</strong><span>aguardando</span></a>
+      <a href="#/pedidos"><strong>${r.producao}</strong><span>em produção</span></a>
+      <a href="#/pedidos"><strong>${r.pronto}</strong><span>prontos</span></a>
+      <a href="#/pedidos?aba=lista&so=atrasados" class="${r.atrasados ? 'neg' : ''}"><strong>${r.atrasados}</strong><span>atrasados</span></a>
+      <a href="#/pedidos?aba=lista&so=proximos"><strong>${r.proximos}</strong><span>prazo próximo</span></a>
+      <a href="#/pedidos"><strong>${fmtGramas(r.filamentoPendente)}</strong><span>de filamento</span></a>
+    </div>
+    ${fila.length ? `<ul class="list">${fila.map((p) => { const s = sitPedido(p, S.empresa); return `<li class="list-item">
+      <span class="li-date ${s.atrasado ? 'late' : ''}">${dataCurta(p.prazo)}</span>
+      <span class="li-main"><strong>${esc(p.produto)}</strong><small>${esc(p.codigo)} · ${esc(p.cliente)} · ${STATUS[p.status].nome}</small></span>
+      <span class="li-val">${s.atrasado ? '<span class="tag tag-critico">Atrasado</span>' : s.proximo ? '<span class="tag tag-alerta">Prazo próximo</span>' : ''}</span></li>`; }).join('')}</ul>`
+      : '<p class="muted small">Nenhum pedido em andamento. <a href="#/pedidos">Cadastrar pedido</a></p>'}
+  </section>`;
+}
 
 let el; let per;
 
@@ -145,6 +169,8 @@ function desenhar() {
       ${pend.pagar.qtdVencido ? `<p class="flag flag-critico">${icon('alert')} ${pend.pagar.qtdVencido} vencida(s): ${brl(pend.pagar.vencido)}</p>` : '<p class="flag flag-ok">Nenhuma conta vencida</p>'}
     </a>
   </section>
+
+  ${cardProducao()}
 
   <section class="card">
     <div class="card-head"><h2>Evolução dos últimos 12 meses</h2><a class="btn-link" href="#/resultados?periodo=ano">Ver relatório</a></div>

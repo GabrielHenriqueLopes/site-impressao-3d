@@ -468,3 +468,235 @@ select v.* from (values
   ('despesa', 'Retirada do dono (pró-labore)', 'retirada',       '#2a2724', 17)
 ) as v(tipo, nome, grupo, cor, ordem)
 where not exists (select 1 from public.categorias);
+
+-- =====================================================================
+--  MÓDULO DE PEDIDOS E PRODUÇÃO (impressão 3D)
+--  Adicionado depois da primeira versão. Rodar o arquivo inteiro de
+--  novo é seguro: nada existente é apagado.
+-- =====================================================================
+
+-- 14. Ajustes de produção (na linha única de "empresa")
+alter table public.empresa add column if not exists lembrete_horas int not null default 24;
+alter table public.empresa add column if not exists folga_dias int not null default 1;
+alter table public.empresa add column if not exists impressora_watts numeric(7,1);
+alter table public.empresa add column if not exists tarifa_kwh numeric(6,3);
+alter table public.empresa add column if not exists fuso text not null default 'America/Sao_Paulo';
+do $$ begin
+  alter table public.empresa add constraint empresa_lembrete_ck check (lembrete_horas between 1 and 720);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table public.empresa add constraint empresa_folga_ck check (folga_dias between 0 and 30);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table public.empresa add constraint empresa_energia_ck check ((impressora_watts is null or impressora_watts between 1 and 5000) and (tarifa_kwh is null or tarifa_kwh between 0.01 and 10));
+exception when duplicate_object then null; end $$;
+
+-- 15. Filamentos (catálogo com preço do rolo → custo por grama)
+create table if not exists public.filamentos (
+  id            uuid primary key default gen_random_uuid(),
+  tipo          text not null check (length(trim(tipo)) between 1 and 20),     -- PLA, PETG, ABS, TPU, Resina…
+  cor           text not null default '' check (length(cor) <= 40),
+  marca         text check (marca is null or length(marca) <= 40),
+  preco_rolo    numeric(10,2) not null check (preco_rolo > 0 and preco_rolo <= 100000),
+  peso_rolo_g   numeric(8,1) not null default 1000 check (peso_rolo_g > 0 and peso_rolo_g <= 100000),
+  ativo         boolean not null default true,
+  criado_em     timestamptz not null default now()
+);
+
+-- 16. Pedidos
+create sequence if not exists public.pedidos_codigo_seq;
+create table if not exists public.pedidos (
+  id                 uuid primary key default gen_random_uuid(),
+  codigo             text not null default ('PED-' || lpad(nextval('public.pedidos_codigo_seq')::text, 4, '0')),
+  produto            text not null check (length(trim(produto)) between 1 and 120),
+  cliente            text not null check (length(trim(cliente)) between 1 and 120),
+  origem             text check (origem in ('whatsapp', 'instagram', 'site', 'indicacao', 'feira', 'outro')),
+  recebido_em        date not null,
+  prazo              date not null,
+  quantidade         int not null check (quantidade between 1 and 10000),
+  unidades_prontas   int not null default 0,
+  prioridade         text not null default 'normal' check (prioridade in ('normal', 'alta', 'urgente')),
+  status             text not null default 'aguardando'
+                     check (status in ('aguardando', 'producao', 'pronto', 'entregue', 'cancelado')),
+  -- impressão e filamento (estimativas informadas pelo usuário)
+  filamento_id       uuid references public.filamentos(id) on delete set null,
+  filamento_tipo     text check (filamento_tipo is null or length(filamento_tipo) <= 20),
+  filamento_cor      text check (filamento_cor is null or length(filamento_cor) <= 40),
+  gramas_unidade     numeric(9,1) check (gramas_unidade is null or (gramas_unidade > 0 and gramas_unidade <= 100000)),
+  margem_perda_pct   numeric(5,1) not null default 0 check (margem_perda_pct between 0 and 100),
+  custo_kg           numeric(10,2) check (custo_kg is null or (custo_kg >= 0 and custo_kg <= 100000)),
+  tempo_unidade_min  int check (tempo_unidade_min is null or tempo_unidade_min between 1 and 100000),
+  -- outros custos estimados do pedido inteiro
+  custo_energia      numeric(10,2) check (custo_energia is null or custo_energia >= 0),
+  custo_acabamento   numeric(10,2) check (custo_acabamento is null or custo_acabamento >= 0),
+  custo_embalagem    numeric(10,2) check (custo_embalagem is null or custo_embalagem >= 0),
+  custo_outros       numeric(10,2) check (custo_outros is null or custo_outros >= 0),
+  preco_venda        numeric(12,2) check (preco_venda is null or (preco_venda >= 0 and preco_venda <= 10000000)),
+  observacoes        text check (observacoes is null or length(observacoes) <= 2000),
+  -- datas de cada etapa (preenchidas automaticamente)
+  iniciado_em        timestamptz,
+  concluido_em       timestamptz,
+  entregue_em        timestamptz,
+  cancelado_em       timestamptz,
+  criado_por         uuid default auth.uid() references auth.users(id),
+  criado_em          timestamptz not null default now(),
+  atualizado_por     uuid references auth.users(id),
+  atualizado_em      timestamptz not null default now(),
+  constraint pedidos_prontas_ck check (unidades_prontas >= 0 and unidades_prontas <= quantidade),
+  constraint pedidos_prazo_ck check (prazo >= recebido_em - 1)
+);
+create unique index if not exists pedidos_codigo_uk on public.pedidos (upper(trim(codigo)));
+create index if not exists pedidos_status_ix on public.pedidos (status, prazo);
+
+-- datas de etapa e carimbos automáticos
+create or replace function app.pedido_etapas() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  new.codigo := upper(trim(new.codigo));
+  new.produto := trim(new.produto);
+  new.cliente := trim(new.cliente);
+  new.atualizado_em := now();
+  new.atualizado_por := auth.uid();
+  if tg_op = 'UPDATE' then
+    new.criado_por := old.criado_por; new.criado_em := old.criado_em;
+  end if;
+  if tg_op = 'INSERT' or new.status is distinct from old.status then
+    if new.status in ('producao', 'pronto', 'entregue') and new.iniciado_em is null then new.iniciado_em := now(); end if;
+    if new.status in ('pronto', 'entregue') and new.concluido_em is null then new.concluido_em := now(); end if;
+    if new.status = 'entregue' and new.entregue_em is null then new.entregue_em := now(); end if;
+    if new.status = 'cancelado' then new.cancelado_em := coalesce(new.cancelado_em, now()); else new.cancelado_em := null; end if;
+    -- voltou de etapa: limpa as datas das etapas seguintes
+    if new.status = 'aguardando' then new.iniciado_em := null; new.concluido_em := null; new.entregue_em := null; end if;
+    if new.status = 'producao' then new.concluido_em := null; new.entregue_em := null; end if;
+    if new.status = 'pronto' then new.entregue_em := null; end if;
+    if new.status in ('pronto', 'entregue') then new.unidades_prontas := new.quantidade; end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists pedidos_etapas on public.pedidos;
+create trigger pedidos_etapas before insert or update on public.pedidos
+  for each row execute function app.pedido_etapas();
+
+-- ligação opcional entre pedido e a receita lançada no financeiro (evita lançar duas vezes)
+alter table public.lancamentos add column if not exists pedido_id uuid references public.pedidos(id) on delete set null;
+create unique index if not exists lanc_pedido_uk on public.lancamentos (pedido_id) where pedido_id is not null;
+
+-- 17. Notificações (geradas pelo banco, sem duplicar) e leitura por usuário
+create table if not exists public.notificacoes (
+  id          uuid primary key default gen_random_uuid(),
+  pedido_id   uuid references public.pedidos(id) on delete cascade,
+  tipo        text not null check (tipo in ('prazo_proximo', 'atrasado', 'iniciar')),
+  referencia  date not null,                 -- prazo do pedido quando o aviso nasceu
+  titulo      text not null,
+  texto       text not null,
+  criado_em   timestamptz not null default now(),
+  unique (pedido_id, tipo, referencia)
+);
+create index if not exists notificacoes_criado_ix on public.notificacoes (criado_em desc);
+
+create table if not exists public.notificacoes_lidas (
+  notificacao_id uuid not null references public.notificacoes(id) on delete cascade,
+  usuario_id     uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  lida_em        timestamptz not null default now(),
+  primary key (notificacao_id, usuario_id)
+);
+
+/* Cria os avisos que já deveriam existir para os pedidos ativos.
+   • prazo_proximo: faltam menos de "lembrete_horas" para o fim do dia do prazo
+   • atrasado:      o dia do prazo já passou e o pedido não foi entregue
+   • iniciar:       ainda não começou e está na hora de começar
+                    (prazo − tempo total de impressão − folga de acabamento)
+   O índice único impede avisos repetidos para o mesmo pedido/tipo/prazo. */
+create or replace function public.gerar_notificacoes() returns int
+language plpgsql security definer set search_path = public as $$
+declare
+  e record; p record; agora timestamptz := now(); fim_prazo timestamptz; inicio_ate timestamptz;
+  horas_imp numeric; n int := 0; k int;
+begin
+  if app.papel() is null then raise exception 'Sem acesso.'; end if;
+  select * into e from public.empresa where id = 1;
+  for p in select * from public.pedidos where status in ('aguardando', 'producao', 'pronto') loop
+    fim_prazo := ((p.prazo + 1)::timestamp at time zone e.fuso);
+    if agora >= fim_prazo and p.status <> 'entregue' then
+      insert into public.notificacoes (pedido_id, tipo, referencia, titulo, texto)
+      values (p.id, 'atrasado', p.prazo, format('Atrasado: %s', p.produto),
+              format('%s (%s) para %s tinha prazo em %s.', p.codigo, p.produto, p.cliente, to_char(p.prazo, 'DD/MM')))
+      on conflict do nothing;
+      get diagnostics k = row_count; n := n + k;
+    elsif agora >= fim_prazo - make_interval(hours => e.lembrete_horas) then
+      insert into public.notificacoes (pedido_id, tipo, referencia, titulo, texto)
+      values (p.id, 'prazo_proximo', p.prazo, format('Prazo chegando: %s', p.produto),
+              format('%s (%s) para %s vence em %s.', p.codigo, p.produto, p.cliente, to_char(p.prazo, 'DD/MM')))
+      on conflict do nothing;
+      get diagnostics k = row_count; n := n + k;
+    end if;
+    if p.status = 'aguardando' then
+      horas_imp := coalesce(p.tempo_unidade_min, 0) * greatest(p.quantidade - p.unidades_prontas, 0) / 60.0;
+      inicio_ate := fim_prazo - make_interval(days => e.folga_dias) - make_interval(secs => horas_imp * 3600);
+      if agora >= inicio_ate - make_interval(hours => e.lembrete_horas) and agora < fim_prazo then
+        insert into public.notificacoes (pedido_id, tipo, referencia, titulo, texto)
+        values (p.id, 'iniciar', p.prazo, format('Hora de começar: %s', p.produto),
+                format('%s para %s ainda não começou. Para entregar em %s, inicie até %s.', p.codigo, p.cliente,
+                       to_char(p.prazo, 'DD/MM'), to_char(inicio_ate at time zone e.fuso, 'DD/MM "às" HH24"h"')))
+        on conflict do nothing;
+        get diagnostics k = row_count; n := n + k;
+      end if;
+    end if;
+  end loop;
+  return n;
+end $$;
+revoke execute on function public.gerar_notificacoes() from anon, public;
+grant execute on function public.gerar_notificacoes() to authenticated;
+
+-- 18. Segurança dos novos dados
+alter table public.filamentos         enable row level security;
+alter table public.pedidos            enable row level security;
+alter table public.notificacoes       enable row level security;
+alter table public.notificacoes_lidas enable row level security;
+revoke all on public.filamentos, public.pedidos, public.notificacoes, public.notificacoes_lidas from anon;
+grant select, insert, update, delete on public.filamentos, public.pedidos to authenticated;
+grant select on public.notificacoes to authenticated;
+grant delete on public.notificacoes to authenticated;
+grant select, insert, delete on public.notificacoes_lidas to authenticated;
+grant usage on sequence public.pedidos_codigo_seq to authenticated;
+
+do $$
+declare t text;
+begin
+  foreach t in array array['filamentos', 'pedidos', 'notificacoes', 'notificacoes_lidas'] loop
+    execute format('drop policy if exists ler on public.%I', t);
+    execute format('drop policy if exists inserir on public.%I', t);
+    execute format('drop policy if exists alterar on public.%I', t);
+    execute format('drop policy if exists excluir on public.%I', t);
+  end loop;
+end $$;
+
+create policy ler on public.filamentos for select to authenticated using (app.papel() is not null);
+create policy inserir on public.filamentos for insert to authenticated with check (app.pode(array['admin', 'gerente']));
+create policy alterar on public.filamentos for update to authenticated using (app.pode(array['admin', 'gerente'])) with check (app.pode(array['admin', 'gerente']));
+create policy excluir on public.filamentos for delete to authenticated using (app.pode(array['admin', 'gerente']));
+
+create policy ler on public.pedidos for select to authenticated using (app.papel() is not null);
+create policy inserir on public.pedidos for insert to authenticated with check (app.papel() is not null);
+create policy alterar on public.pedidos for update to authenticated
+  using (app.pode(array['admin', 'gerente']) or (app.papel() = 'funcionario' and criado_por = auth.uid()))
+  with check (app.papel() is not null);
+create policy excluir on public.pedidos for delete to authenticated using (app.pode(array['admin', 'gerente']));
+
+create policy ler on public.notificacoes for select to authenticated using (app.papel() is not null);
+create policy excluir on public.notificacoes for delete to authenticated using (app.pode(array['admin', 'gerente']));
+
+create policy ler on public.notificacoes_lidas for select to authenticated using (usuario_id = auth.uid());
+create policy inserir on public.notificacoes_lidas for insert to authenticated with check (usuario_id = auth.uid() and app.papel() is not null);
+create policy excluir on public.notificacoes_lidas for delete to authenticated using (usuario_id = auth.uid());
+
+-- histórico de alterações também para pedidos e filamentos
+do $$
+declare t text;
+begin
+  foreach t in array array['pedidos', 'filamentos'] loop
+    execute format('drop trigger if exists %I_audita on public.%I', t, t);
+    execute format('create trigger %I_audita after insert or update or delete on public.%I
+                    for each row execute function app.audita()', t, t);
+  end loop;
+end $$;

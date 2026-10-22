@@ -11,7 +11,10 @@ gestao/
 ├── js/api.js             conexão com o Supabase (login, banco, comprovantes)
 ├── js/finance.js         todos os cálculos financeiros (em centavos)
 ├── js/store.js, nav.js, ui.js, charts.js, format.js, main.js
-├── js/views/             telas: painel, lançamentos, contas, orçamento, resultados, metas, configurações
+├── js/pedidos-calc.js    cálculos de pedidos (filamento, custos, prazos, indicadores)
+├── js/notificar.js       notificações do navegador
+├── js/views/             telas: painel, pedidos, avisos, lançamentos, contas, orçamento, resultados, metas, configurações
+├── sw.js                 service worker mínimo (só para notificações no celular)
 └── supabase/schema.sql   banco de dados completo: tabelas, segurança, histórico, recorrências
 ```
 
@@ -114,3 +117,32 @@ Os testes rodaram com PostgreSQL 16, GoTrue (o mesmo servidor de login do Supaba
 - Fluxos completos no navegador: login, receitas, despesas, baixa, calendário, orçamento, metas, backup e restauração, e persistência depois de recarregar, no computador, no tablet e no celular, sem rolagem horizontal.
 
 O que não foi testado aqui: o Supabase Storage real (testado com um equivalente local) e o envio real de e-mails de convite e recuperação.
+
+
+## Pedidos e produção (módulo adicionado depois)
+
+**Para ativar:** no Supabase, abra o **SQL Editor**, cole de novo **todo** o `supabase/schema.sql` e clique em **Run**.
+O script só cria o que falta e não apaga nada. Enquanto ele não for rodado, o resto do aplicativo funciona normalmente e a tela Pedidos mostra um aviso.
+
+**O que o módulo faz**
+- **Pedido:** produto, cliente, origem, código automático (`PED-0001`, editável), data de recebimento, prazo, unidades, prioridade, observações, filamento (tipo e cor), gramas por unidade, margem para falhas, tempo de impressão, preço de venda, energia, acabamento, embalagem e outros custos.
+- **Cálculos automáticos (sempre estimativas):**
+  - consumo total = gramas por unidade × unidades × (1 + margem);
+  - custo por grama = preço do rolo ÷ peso do rolo;
+  - custo do filamento = consumo × custo por grama;
+  - energia = potência × horas × tarifa (se configuradas);
+  - lucro = preço − todos os custos informados.
+
+  Quando falta algum dado, o aplicativo diz qual é e não inventa valor.
+- **Fila de produção:** quatro colunas (Aguardando início → Em produção → Pronto para entrega → Entregue). Dá para arrastar os cartões ou usar os botões Iniciar, Concluir e Entregar. Cada cartão mostra prazo, progresso (unidades prontas, com botão **+1**), filamento e valor. As datas de início, conclusão e entrega são gravadas pelo banco.
+- **Prioridades e filtros:** lista ordenada por atraso, prazo próximo, prioridade e prazo. Filtra por etapa, cliente, produto, datas, atrasados, prazo próximo e "começar em breve". A busca procura por cliente, produto ou código.
+- **Histórico:** entregues e cancelados, fora da fila, com datas, consumo, custo, preço, lucro e se a entrega saiu no prazo.
+- **Financeiro:** ao entregar, o aplicativo oferece lançar a receita. Ela fica ligada ao pedido e nunca é lançada duas vezes. O lucro do pedido é estimado; o lucro real continua vindo dos lançamentos de compra de material, para não contar o mesmo custo duas vezes.
+- **Indicadores:** pedidos ativos por etapa, atrasados, prazo próximo, filamento a usar, valor dos pedidos e receita e lucro dos entregues no mês. Pedidos cancelados não entram nas contas.
+
+**Avisos e notificações**
+- O **banco** cria os avisos, sem repetir: *prazo chegando* (dentro da antecedência configurada), *atrasado* e *hora de começar*. Este último usa a conta prazo − tempo total de impressão − folga.
+- Eles aparecem no sino do topo e na tela **Avisos**, onde dá para marcar como lido ou não lido. A leitura é individual: cada pessoa tem a sua.
+- **Notificações do navegador:** em **Avisos → Ativar neste aparelho**. Funcionam enquanto o aplicativo está aberto, mesmo em outra aba ou minimizado. O aplicativo verifica ao abrir e a cada 5 minutos.
+- **Limitação:** com o aplicativo **fechado**, não chega alerta. Para isso seria preciso um serviço de envio (push com chaves VAPID e uma função agendada, ou e-mail com SMTP), o que exige configuração e serviços extras.
+- **Ajustes** em **Configurações → Produção:** antecedência dos lembretes, folga para acabamento, potência da impressora, tarifa de energia e catálogo de filamentos.

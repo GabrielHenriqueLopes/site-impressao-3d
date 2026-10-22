@@ -1,6 +1,7 @@
 /* Aplicativo de gestão — inicialização, login e navegação. */
 import * as api from './api.js';
-import { S, carregarPerfil, carregarTudo, onMudanca } from './store.js';
+import { S, carregarPerfil, carregarTudo, onMudanca, onAvisos, atualizarAvisos, naoLidas } from './store.js';
+import { notificarNovos, registrarServiceWorker } from './notificar.js';
 import { $, $$, icon, toast, erro, ocupado } from './ui.js';
 import { esc, PAPEIS } from './format.js';
 import { abrirLancamento } from './views/lancamento-form.js';
@@ -8,6 +9,8 @@ import { rotaAtual } from './nav.js';
 
 const ROTAS = {
   '': { titulo: 'Painel', icone: 'grid', mod: () => import('./views/painel.js') },
+  pedidos: { titulo: 'Pedidos e produção', curto: 'Pedidos', icone: 'printer', mod: () => import('./views/pedidos.js') },
+  avisos: { titulo: 'Avisos', icone: 'bell', mod: () => import('./views/avisos.js') },
   lancamentos: { titulo: 'Lançamentos', icone: 'list', mod: () => import('./views/lancamentos.js') },
   contas: { titulo: 'Contas a pagar e receber', curto: 'A pagar e receber', icone: 'calendar', mod: () => import('./views/contas.js') },
   orcamento: { titulo: 'Orçamento', icone: 'wallet', mod: () => import('./views/orcamento.js') },
@@ -116,7 +119,7 @@ function telaSemAcesso(perfil) {
 
 /* ---------------- sistema ---------------- */
 function montarShell() {
-  const nav = Object.entries(ROTAS).map(([k, r]) => `<li><a href="#/${k}" data-rota="${k}">${icon(r.icone)}<span>${esc(r.curto || r.titulo)}</span></a></li>`).join('');
+  const nav = Object.entries(ROTAS).map(([k, r]) => `<li><a href="#/${k}" data-rota="${k}">${icon(r.icone)}<span>${esc(r.curto || r.titulo)}</span>${k === 'avisos' ? '<span class="badge" data-badge hidden></span>' : ''}</a></li>`).join('');
   app.innerHTML = `
   <div class="shell">
     <aside class="sidebar" data-sidebar>
@@ -133,6 +136,8 @@ function montarShell() {
         <button class="icon-btn menu-btn" type="button" data-menu aria-label="Abrir menu" aria-expanded="false">${icon('menu')}</button>
         <h1 class="page-title" data-titulo></h1>
         <div class="top-actions">
+          <a class="icon-btn bell" href="#/avisos" aria-label="Avisos" data-sino>${icon('bell')}<span class="badge" data-badge hidden></span></a>
+          <button class="btn btn-sm btn-accent" type="button" data-novo-pedido>${icon('plus')}<span>Pedido</span></button>
           <button class="btn btn-sm btn-outline-ok" type="button" data-novo="receita">${icon('plus')}<span>Receita</span></button>
           <button class="btn btn-sm btn-outline-bad" type="button" data-novo="despesa">${icon('plus')}<span>Despesa</span></button>
         </div>
@@ -140,13 +145,19 @@ function montarShell() {
       <main id="conteudo" class="content" tabindex="-1"></main>
     </div>
     <nav class="bottom-nav" aria-label="Atalhos">
-      ${[['', 'Painel'], ['lancamentos', 'Lançamentos'], ['contas', 'Contas'], ['resultados', 'Lucro']].map(([k, t]) => `<a href="#/${k}" data-rota="${k}">${icon(ROTAS[k].icone)}<span>${t}</span></a>`).join('')}
+      ${[['', 'Painel'], ['pedidos', 'Pedidos'], ['lancamentos', 'Lançamentos'], ['contas', 'Contas']].map(([k, t]) => `<a href="#/${k}" data-rota="${k}">${icon(ROTAS[k].icone)}<span>${t}</span></a>`).join('')}
       <button type="button" data-menu>${icon('menu')}<span>Mais</span></button>
     </nav>
     <div class="scrim" data-scrim hidden></div>
   </div>`;
   $('[data-sair]').addEventListener('click', async () => { await api.sair(); location.hash = ''; telaLogin(); });
   $$('[data-novo]').forEach((b) => b.addEventListener('click', () => abrirLancamento({ tipo: b.dataset.novo })));
+  $('[data-novo-pedido]').addEventListener('click', async () => {
+    if (!S.moduloPedidos) { location.hash = '#/pedidos'; return; }
+    (await import('./views/pedido-form.js')).abrirPedido();
+  });
+  if (!S.moduloPedidos) $('[data-novo-pedido]').hidden = true;
+  atualizarSino();
   const side = $('[data-sidebar]');
   const scrim = $('[data-scrim]');
   const abrir = (v) => {
@@ -187,6 +198,22 @@ function rerender() {
   viewAtual.atualizar ? viewAtual.atualizar() : renderRota();
 }
 
+function atualizarSino() {
+  const n = naoLidas().length;
+  $$('[data-badge]').forEach((b) => { b.hidden = !n; b.textContent = n > 99 ? '99+' : String(n); });
+  const sino = $('[data-sino]');
+  if (sino) sino.setAttribute('aria-label', n ? `Avisos: ${n} não lido(s)` : 'Avisos');
+}
+
+async function verificarAvisos() {
+  if (!S.moduloPedidos || !$('.shell')) return;
+  try {
+    const nl = await atualizarAvisos();
+    notificarNovos(nl, () => { location.hash = '#/avisos'; });
+    atualizarSino();
+  } catch (e) { console.warn('[avisos]', e); }
+}
+
 let iniciado = false;
 async function iniciar() {
   if (!api.configurado()) { telaNaoConfigurado(); return; }
@@ -209,15 +236,19 @@ async function iniciar() {
   if (!iniciado) {
     iniciado = true;
     window.addEventListener('hashchange', () => { if ($('.shell')) renderRota(); });
-    onMudanca(() => rerender());
+    onMudanca(() => { rerender(); atualizarSino(); });
+    onAvisos(() => atualizarSino());
+    registrarServiceWorker();
+    setInterval(verificarAvisos, 5 * 60 * 1000);
     api.onSessao((s) => { if (!s && $('.shell')) telaLogin('Sua sessão terminou. Entre novamente.'); });
     // recarrega os dados quando a aba volta a ficar visível depois de um tempo (outro usuário pode ter lançado algo)
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'visible' && $('.shell') && Date.now() - S.carregadoEm > 5 * 60 * 1000) {
         try { await carregarTudo(); } catch (e) { console.warn(e); }
-      }
+      } else if (document.visibilityState === 'visible') verificarAvisos();
     });
   }
+  notificarNovos(naoLidas(), () => { location.hash = '#/avisos'; });
 }
 
 iniciar().catch((e) => {
