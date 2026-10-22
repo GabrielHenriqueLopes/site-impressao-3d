@@ -124,3 +124,4 @@ Três caminhos, do mais simples ao mais completo:
 ## 7. Recursos externos
 
 Somente as fontes gratuitas do Google Fonts (Fraunces, Instrument Sans, JetBrains Mono) e, quando houver endereço, o mapa incorporado do Google Maps. Nenhuma biblioteca JavaScript externa.
+
