@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Ateliê 3D — Impressão 3D com pintura artesanal</title>
+  <title>ForgeLab — Impressão 3D com pintura à mão</title>
   <meta name="description" content="Impressão 3D de alta qualidade com pintura artesanal e acabamento feito nos mínimos detalhes. Miniaturas, estatuetas, colecionáveis e peças sob encomenda.">
-  <meta name="theme-color" content="#151413">
+  <meta name="theme-color" content="#0b0a0f">
+  <meta name="color-scheme" content="dark">
   <meta property="og:title" content="Da impressão à arte — Impressão 3D com pintura artesanal">
   <meta property="og:description" content="Peças impressas em 3D e pintadas à mão, com atenção aos mínimos detalhes.">
   <meta property="og:image" content="assets/images/peca-pintada.webp">
   <meta property="og:type" content="website">
-  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/icons/favicon-forgelab.png" type="image/png">
 
   <!-- Imagens da experiência principal: carregadas com prioridade -->
   <link rel="preload" as="image" href="assets/images/peca-sem-pintura.webp" type="image/webp" fetchpriority="high">
@@ -19,7 +20,7 @@
   <!-- Fontes (Google Fonts, gratuitas): Fraunces (títulos), Instrument Sans (texto), JetBrains Mono (rótulos técnicos) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,0..100;1,9..144,300..700,0..100&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Saira:wdth,wght@75..125,400..800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="style.css">
 </head>
@@ -63,7 +64,7 @@
       <span class="brand-mark" data-brand-mark aria-hidden="true">
         <svg viewBox="0 0 32 32" width="32" height="32"><g fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 24h20M8 20h16M10 16h12"/><path d="M16 4c3.5 4.2 5 6.6 5 8.6a5 5 0 0 1-10 0c0-2 1.5-4.4 5-8.6Z" fill="var(--accent)" stroke="none"/></g></svg>
       </span>
-      <span class="brand-name" data-text="brand.name">Ateliê 3D</span>
+      <span class="brand-name" aria-label="ForgeLab"><span class="bn-forge">Forge</span><span class="bn-lab">Lab</span></span>
     </a>
 
     <nav class="main-nav" id="menu-principal" aria-label="Navegação principal" data-nav>
@@ -148,6 +149,11 @@
   </div>
 
 </section>
+
+<!-- Faixa animada com o que a ForgeLab faz -->
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track"><div class="ticker-group"><span>Impressão 3D</span><i></i><span>Pintura à mão</span><i></i><span>Resina & filamento</span><i></i><span>Action figures</span><i></i><span>Miniaturas</span><i></i><span>Colecionáveis</span><i></i><span>Peças sob encomenda</span><i></i></div><div class="ticker-group"><span>Impressão 3D</span><i></i><span>Pintura à mão</span><i></i><span>Resina & filamento</span><i></i><span>Action figures</span><i></i><span>Miniaturas</span><i></i><span>Colecionáveis</span><i></i><span>Peças sob encomenda</span><i></i></div></div>
+</div>
 
 <!-- ======================= PRODUTOS (CARROSSEL) ======================= -->
 <section class="section products" id="produtos" aria-labelledby="produtos-title">
@@ -345,14 +351,14 @@
   <div class="container insta-inner">
     <div class="insta-copy">
       <p class="eyebrow"><svg class="icon" aria-hidden="true"><use href="#i-instagram"/></svg> Instagram</p>
-      <h2 id="insta-title" class="section-title">Acompanhe o ateliê de perto.</h2>
+      <h2 id="insta-title" class="section-title">Acompanhe a forja de perto.</h2>
       <p class="insta-handle" data-insta-handle></p>
       <div class="setup-note" data-insta-note hidden></div>
       <a class="btn btn-dark" data-insta-link target="_blank" rel="noopener" hidden>
         <svg class="icon"><use href="#i-instagram"/></svg> Acompanhe nosso trabalho
       </a>
     </div>
-    <ul class="insta-strip" data-insta-strip aria-label="Algumas peças do ateliê"></ul>
+    <ul class="insta-strip" data-insta-strip aria-label="Algumas peças da ForgeLab"></ul>
   </div>
 </section>
 
@@ -361,7 +367,7 @@
   <div class="container shipping-grid">
     <div class="shipping-info">
       <p class="eyebrow"><span class="idx">07</span> Entrega</p>
-      <h2 id="frete-title" class="section-title">Do ateliê até você.</h2>
+      <h2 id="frete-title" class="section-title">Da forja até você.</h2>
       <p class="section-lead">Trabalhamos apenas com envio. Informe seu CEP para ver uma estimativa de frete — o valor final é confirmado no WhatsApp, conforme o tamanho e o peso da peça.</p>
     </div>
     <div class="ship-card">
@@ -393,9 +399,9 @@
         <span class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 32 32" width="32" height="32"><g fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 24h20M8 20h16M10 16h12"/><path d="M16 4c3.5 4.2 5 6.6 5 8.6a5 5 0 0 1-10 0c0-2 1.5-4.4 5-8.6Z" fill="var(--accent)" stroke="none"/></g></svg>
         </span>
-        <span class="brand-name" data-text="brand.name">ForgeLab</span>
+        <span class="brand-name" aria-label="ForgeLab"><span class="bn-forge">Forge</span><span class="bn-lab">Lab</span></span>
       </a>
-      <p data-text="brand.tagline">Impressão 3D com alma de ateliê: cada peça é impressa com precisão e pintada à mão.</p>
+      <p data-text="brand.tagline">Impressão 3D em resina e filamento, finalizada à mão — de miniaturas a action figures.</p>
     </div>
     <nav class="footer-nav" aria-label="Rodapé">
       <h3>Navegue</h3>
@@ -418,7 +424,7 @@
     </div>
   </div>
   <div class="container footer-bottom">
-    <p>© <span data-year></span> <span data-text="brand.name">Ateliê 3D</span>. Todos os direitos reservados.</p>
+    <p>© <span data-year></span> <span data-text="brand.name">ForgeLab</span>. Todos os direitos reservados.</p>
     <p class="footer-credit">Peças impressas em 3D e pintadas à mão.</p>
   </div>
 </footer>

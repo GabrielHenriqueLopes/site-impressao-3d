@@ -1,5 +1,5 @@
 /* =================================================================
-   Ateliê 3D — script principal
+   ForgeLab — script principal
    -----------------------------------------------------------------
    1. CONFIGURAÇÃO  ← edite aqui as informações do estabelecimento
    2. Utilidades
@@ -28,8 +28,8 @@ const SITE_CONFIG = {
   brand: {
     name: "ForgeLab", // nome provisório — substitua pelo nome real
     tagline:
-      "Impressão 3D com alma de ateliê: cada peça é impressa com precisão e pintada à mão.",
-    logo: "", // ex.: 'assets/images/logo.svg' (vazio = símbolo padrão)
+      "Impressão 3D em resina e filamento, finalizada à mão — de miniaturas a action figures.",
+    logo: "assets/images/forgelab-icon.png", // símbolo do logo (troque pela versão em alta resolução)
   },
 
   whatsapp: {
@@ -101,7 +101,7 @@ const SITE_CONFIG = {
 
   texts: {
     hero: {
-      eyebrow: "Impressão 3D · Pintura à mão",
+      eyebrow: "Impressão 3D · Action figures",
       title: "Da impressão à arte.",
       subtitle:
         "Impressão 3D de alta qualidade com pintura artesanal e acabamento feito nos mínimos detalhes.",
@@ -241,19 +241,19 @@ const SITE_CONFIG = {
   instagramGallery: [
     {
       src: "assets/images/instagram-1.webp",
-      alt: "Foto do Instagram do ateliê",
+      alt: "Foto do Instagram da ForgeLab",
     },
     {
       src: "assets/images/instagram-2.webp",
-      alt: "Foto do Instagram do ateliê",
+      alt: "Foto do Instagram da ForgeLab",
     },
     {
       src: "assets/images/instagram-3.webp",
-      alt: "Foto do Instagram do ateliê",
+      alt: "Foto do Instagram da ForgeLab",
     },
     {
       src: "assets/images/instagram-4.webp",
-      alt: "Foto do Instagram do ateliê",
+      alt: "Foto do Instagram da ForgeLab",
     },
   ],
 };
@@ -465,7 +465,7 @@ function applyContent() {
 
   if (!SITE_CONFIG.whatsapp.number) {
     console.info(
-      "[Ateliê 3D] Configure SITE_CONFIG.whatsapp.number para que os botões abram a conversa com o estabelecimento.",
+      "[ForgeLab] Configure SITE_CONFIG.whatsapp.number para que os botões abram a conversa com o estabelecimento.",
     );
   }
 }
@@ -1766,6 +1766,53 @@ function initHeroLife(reveal) {
 /* =================================================================
    Inicialização
    ================================================================= */
+/* =================================================================
+   Destaque do menu conforme a seção visível
+   (esta função tinha sido apagada sem querer — a chamada no final
+   do arquivo gerava o erro "initActiveNav is not defined")
+   ================================================================= */
+function initActiveNav() {
+  const links = $$(".main-nav li a");
+  const map = new Map(links.map((a) => [a.getAttribute("href").slice(1), a]));
+  const io = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((en) => {
+        if (!en.isIntersecting) return;
+        links.forEach((a) => a.classList.remove("is-active"));
+        const a = map.get(en.target.id);
+        if (a) a.classList.add("is-active");
+      });
+    },
+    { rootMargin: "-45% 0px -50% 0px" },
+  );
+  map.forEach((_, id) => {
+    const s = document.getElementById(id);
+    if (s) io.observe(s);
+  });
+}
+
+/* =================================================================
+   Linha de progresso do "Como funciona"
+   Uma linha roxa percorre as 4 etapas quando a seção aparece.
+   ================================================================= */
+function initStepsLine() {
+  const steps = $(".steps");
+  if (!steps) return;
+  if (prefersReducedMotion.matches || !("IntersectionObserver" in window)) {
+    steps.classList.add("is-lit");
+    return;
+  }
+  const io = new IntersectionObserver(
+    ([en]) => {
+      if (!en.isIntersecting) return;
+      steps.classList.add("is-lit");
+      io.disconnect();
+    },
+    { threshold: 0.25 },
+  );
+  io.observe(steps);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   applyContent();
   checkExistingPhotos();
@@ -1782,4 +1829,5 @@ document.addEventListener("DOMContentLoaded", () => {
   initInstagram();
   initShipping();
   initActiveNav();
+  initStepsLine();
 });
