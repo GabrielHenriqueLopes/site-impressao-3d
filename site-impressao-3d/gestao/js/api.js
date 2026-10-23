@@ -66,6 +66,8 @@ function traduzir(status, body) {
     '23514': 'Algum valor informado é inválido. Confira os campos.',
     '42501': 'Você não tem permissão para esta ação.',
     PGRST301: 'Sua sessão expirou. Entre novamente.',
+    PGRST204: 'O banco de dados está desatualizado para este recurso. No Supabase, rode de novo o arquivo gestao/supabase/schema.sql (SQL Editor → Run).',
+    PGRST205: 'O banco de dados está desatualizado para este recurso. No Supabase, rode de novo o arquivo gestao/supabase/schema.sql (SQL Editor → Run).',
   };
   let texto = map[code];
   if (!texto && code === 'P0001') texto = msg;          // mensagens escritas no próprio banco

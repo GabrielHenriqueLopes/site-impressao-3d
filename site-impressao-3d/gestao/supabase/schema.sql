@@ -579,7 +579,7 @@ create trigger pedidos_etapas before insert or update on public.pedidos
 
 -- ligação opcional entre pedido e a receita lançada no financeiro (evita lançar duas vezes)
 alter table public.lancamentos add column if not exists pedido_id uuid references public.pedidos(id) on delete set null;
-create unique index if not exists lanc_pedido_uk on public.lancamentos (pedido_id) where pedido_id is not null;
+-- (a regra "um pedido não é lançado duas vezes" fica na seção de parcelamento, mais abaixo)
 
 -- 17. Notificações (geradas pelo banco, sem duplicar) e leitura por usuário
 create table if not exists public.notificacoes (
@@ -700,3 +700,27 @@ begin
                     for each row execute function app.audita()', t, t);
   end loop;
 end $$;
+
+-- =====================================================================
+--  PARCELAMENTO (receitas e despesas em várias parcelas)
+--  Cada parcela é um lançamento normal (com o próprio vencimento e
+--  pagamento). Todas compartilham "parcela_grupo" e a mesma data da
+--  venda/compra, então o faturamento e o lucro contam o valor uma vez
+--  só, no mês da venda, e o caixa conta cada parcela quando for paga.
+-- =====================================================================
+alter table public.lancamentos add column if not exists parcela_grupo uuid;
+alter table public.lancamentos add column if not exists parcela_num int;
+alter table public.lancamentos add column if not exists parcela_total int;
+alter table public.lancamentos drop constraint if exists lanc_parcela_ck;
+alter table public.lancamentos add constraint lanc_parcela_ck check (
+  (parcela_grupo is null and parcela_num is null and parcela_total is null) or
+  (parcela_grupo is not null and parcela_num is not null and parcela_total is not null
+   and parcela_total between 2 and 120 and parcela_num between 1 and parcela_total));
+create index if not exists lanc_parcela_grupo_ix on public.lancamentos (parcela_grupo) where parcela_grupo is not null;
+create unique index if not exists lanc_parcela_uk on public.lancamentos (parcela_grupo, parcela_num) where parcela_grupo is not null;
+
+-- um pedido pode ter a receita dividida em parcelas, mas não pode ser lançado duas vezes
+drop index if exists public.lanc_pedido_uk;
+create unique index if not exists lanc_pedido_parcela_uk on public.lancamentos (pedido_id, (coalesce(parcela_num, 1))) where pedido_id is not null;
+
+notify pgrst, 'reload schema';

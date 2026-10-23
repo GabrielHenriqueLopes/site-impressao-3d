@@ -678,3 +678,11 @@ details.sec[open] > summary { margin-bottom: 12px; }
   .kpis-ped .kpi:last-child { grid-column: 1 / -1; }
   .kpis-ped .kpi-label { font-size: .62rem; }
 }
+
+/* ---------- 14. Parcelamento ---------- */
+.parc-box { display: grid; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
+.parc-tbl input[type="date"] { min-height: 34px; padding: 4px 8px; max-width: 170px; }
+.parc-tbl td { vertical-align: middle; }
+.parc-tbl .input-money.sm input { width: 120px; }
+.parc-soma { display: flex; align-items: center; gap: 6px; font-size: .86rem; font-weight: 600; }
+.parc-soma.pos { color: var(--pos); } .parc-soma.neg { color: var(--neg); }

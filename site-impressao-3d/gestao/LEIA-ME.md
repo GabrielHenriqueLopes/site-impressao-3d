@@ -146,3 +146,17 @@ O script só cria o que falta e não apaga nada. Enquanto ele não for rodado, o
 - **Notificações do navegador:** em **Avisos → Ativar neste aparelho**. Funcionam enquanto o aplicativo está aberto, mesmo em outra aba ou minimizado. O aplicativo verifica ao abrir e a cada 5 minutos.
 - **Limitação:** com o aplicativo **fechado**, não chega alerta. Para isso seria preciso um serviço de envio (push com chaves VAPID e uma função agendada, ou e-mail com SMTP), o que exige configuração e serviços extras.
 - **Ajustes** em **Configurações → Produção:** antecedência dos lembretes, folga para acabamento, potência da impressora, tarifa de energia e catálogo de filamentos.
+
+
+## Parcelamento de receitas e despesas
+
+No formulário de **+ Receita** ou **+ Despesa**, marque **Parcelar**:
+- Escolha o **número de parcelas** (2 a 60) e o **intervalo**: mensal, no mesmo dia de cada mês (dia 31 vira o último dia em meses mais curtos), ou **a cada X dias**.
+- Informe o vencimento da 1ª parcela. A tabela mostra cada parcela, e **datas e valores podem ser ajustados um a um**. O aplicativo só salva quando a soma bate exatamente com o total. Os centavos que sobram da divisão vão para a 1ª parcela.
+- **"A 1ª parcela já foi paga (entrada)"** serve para casos como sinal no Pix + restante depois, ou a primeira parcela do cartão.
+- Cada parcela vira um lançamento próprio, com o nome "Descrição (2/3)". Ela aparece em **A pagar e receber**, no calendário e na previsão de caixa, e é paga separadamente.
+- **Contas:** faturamento, lucro e orçamento contam o **valor total na data da venda ou da compra**, uma vez só. O caixa conta cada parcela quando ela é paga.
+- Ao abrir uma parcela, **"Ver todas as parcelas"** mostra o andamento. Na exclusão, dá para apagar só aquela parcela ou todas.
+- Na receita de um **pedido** entregue, o parcelamento também funciona, e o pedido continua sem poder ser lançado duas vezes.
+
+Requer rodar de novo o `supabase/schema.sql` (ele acrescenta as colunas de parcela; nada é apagado).

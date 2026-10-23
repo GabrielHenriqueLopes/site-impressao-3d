@@ -3,7 +3,8 @@ import * as api from '../api.js';
 import { S, criar, alterar, remover, podeEditarLanc, podeGerir, novoId, gerarRecorrencias } from '../store.js';
 import { modal, confirmar, campo, erroCampo, limparErros, ligarDinheiro, dinheiro, ocupado, toast, erro, icon, $, selo } from '../ui.js';
 import { esc, hoje, brl, centavos, dataBR, dataHora, FORMAS, ORIGENS, GRUPOS, inicioMes, somaDias } from '../format.js';
-import { possiveisDuplicados, statusEfetivo } from '../finance.js';
+import { possiveisDuplicados, statusEfetivo, gerarParcelas, descricaoParcela } from '../finance.js';
+import { lerValor, valorInput } from '../format.js';
 
 const opcoesCategoria = (tipo, atual) => [{ valor: '', rotulo: 'Escolha…' }].concat(
   S.categorias.filter((c) => c.tipo === tipo && (c.ativo || c.id === atual))
@@ -48,6 +49,21 @@ export function abrirLancamento(opts = {}) {
       </div>
     </fieldset>
 
+    ${editando || v.recorrencia_id ? '' : `<label class="check" data-parc-toggle><input type="checkbox" name="parcelar" value="1"> <span>Parcelar <small>(dividir em várias vezes: 3x no cartão, sinal + restante, boleto mensal…)</small></span></label>
+    <div class="parc-box" data-parc hidden>
+      <div class="grid-4">
+        ${campo({ nome: 'parc_n', rotulo: 'Nº de parcelas', tipo: 'number', valor: 3, attrs: 'min="2" max="60" step="1" inputmode="numeric"' })}
+        ${campo({ nome: 'parc_modo', rotulo: 'Intervalo', valor: 'mensal', opcoes: [{ valor: 'mensal', rotulo: 'Mensal' }, { valor: 'dias', rotulo: 'A cada X dias' }] })}
+        <div data-parc-dias-wrap hidden>${campo({ nome: 'parc_dias', rotulo: 'A cada quantos dias', tipo: 'number', valor: 30, attrs: 'min="1" max="365" step="1" inputmode="numeric"' })}</div>
+        ${campo({ nome: 'parc_primeira', rotulo: '1ª parcela vence em', tipo: 'date', valor: v.data_vencimento || v.data_competencia })}
+      </div>
+      <label class="check"><input type="checkbox" name="parc_entrada" value="1"> <span data-parc-entrada-txt>A 1ª parcela já foi ${tipo === 'receita' ? 'recebida' : 'paga'} (entrada)</span></label>
+      <div class="table-wrap"><table class="tbl compact parc-tbl"><thead><tr><th>Parcela</th><th>Vencimento</th><th class="num">Valor</th></tr></thead><tbody data-parc-linhas></tbody></table></div>
+      <p class="parc-soma" data-parc-soma aria-live="polite"></p>
+      <p class="hyp">${icon('info')} <span>Datas e valores de cada parcela podem ser ajustados acima. No faturamento, no lucro e no orçamento, o valor total conta na data da ${tipo === 'receita' ? 'venda' : 'compra'}. No caixa, cada parcela conta quando for paga.</span></p>
+    </div>`}
+    ${v.parcela_grupo ? `<p class="note">${icon('list')} Parcela <strong>${v.parcela_num} de ${v.parcela_total}</strong>. Alterar aqui muda só esta parcela. <button type="button" class="btn-link" data-ver-parcelas>Ver todas as parcelas</button></p>` : ''}
+
     <div class="grid-3" data-pago-box ${v.status === 'pago' ? '' : 'hidden'}>
       ${campo({ nome: 'data_pagamento', rotulo: tipo === 'receita' ? 'Recebido em' : 'Pago em', tipo: 'date', valor: v.data_pagamento || hoje(), attrs: `max="${hoje()}"` })}
       ${campo({ nome: 'conta_id', rotulo: 'Conta', valor: v.conta_id || contaPadrao(), opcoes: opcoesConta(v.conta_id) })}
@@ -88,9 +104,55 @@ export function abrirLancamento(opts = {}) {
       const form = $('[data-form]', dlg);
       ligarDinheiro(form);
       let tirarComp = false;
+      const parcelando = () => Boolean(form.parcelar?.checked);
+      let parcelas = [];
+      const desenharParcelas = () => {
+        const corpoT = $('[data-parc-linhas]', dlg);
+        if (!corpoT) return;
+        corpoT.innerHTML = parcelas.map((x, i) => `<tr><td>${i + 1}/${parcelas.length}${i === 0 && form.parc_entrada.checked ? ' <span class="tag tag-ok">entrada</span>' : ''}</td>
+          <td><input type="date" data-pv="${i}" value="${x.vencimento}" aria-label="Vencimento da parcela ${i + 1}"></td>
+          <td class="num"><div class="input-money sm"><span aria-hidden="true">R$</span><input type="text" inputmode="decimal" data-pval="${i}" value="${valorInput(x.valor)}" aria-label="Valor da parcela ${i + 1}"></div></td></tr>`).join('');
+        somarParcelas();
+      };
+      const somarParcelas = () => {
+        const total = dinheiro(form, 'valor');
+        const soma = parcelas.reduce((t, x) => t + (Number.isFinite(x.valor) ? x.valor : 0), 0);
+        const el = $('[data-parc-soma]', dlg);
+        if (!el) return;
+        if (!Number.isFinite(total) || total <= 0) { el.innerHTML = 'Informe o valor total para dividir.'; el.className = 'parc-soma'; return; }
+        const dif = total - soma;
+        el.className = `parc-soma ${dif ? 'neg' : 'pos'}`;
+        el.innerHTML = dif ? `${icon('alert')} As parcelas somam ${brl(soma)}, ${dif > 0 ? 'faltam' : 'sobram'} ${brl(Math.abs(dif))} para o total de ${brl(total)}.`
+          : `${icon('check')} ${parcelas.length} parcelas somando ${brl(soma)}${parcelas.length && new Set(parcelas.map((x) => x.valor)).size === 1 ? ` (${parcelas.length}x de ${brl(parcelas[0].valor)})` : ''}.`;
+      };
+      let assinatura = '';
+      const regerar = () => {
+        if (!form.parc_n) return;
+        const total = dinheiro(form, 'valor');
+        const n = Math.min(60, Math.max(2, Math.floor(Number(form.parc_n.value) || 2)));
+        const prim = form.parc_primeira.value || form.data_competencia.value;
+        // só refaz a tabela quando algo que define as parcelas mudou (preserva ajustes manuais e o foco)
+        const nova = [total, n, prim, form.parc_modo.value, form.parc_dias.value].join('|');
+        if (nova === assinatura && parcelas.length) return;
+        assinatura = nova;
+        parcelas = gerarParcelas(Number.isFinite(total) && total > 0 ? total : 0, n, prim, { modo: form.parc_modo.value, dias: Number(form.parc_dias.value) || 30 });
+        desenharParcelas();
+      };
       const sincronizar = () => {
         const st = form.status.value;
-        $('[data-pago-box]', dlg).hidden = st !== 'pago';
+        const parc = parcelando();
+        if (form.parc_n) {
+          $('[data-parc]', dlg).hidden = !parc;
+          $('[data-parc-dias-wrap]', dlg).hidden = form.parc_modo.value !== 'dias';
+          form.querySelector('fieldset.field').hidden = parc;
+          form.querySelector('[data-field="data_vencimento"]').hidden = parc;
+          const rep = form.repetir?.closest('label'); if (rep) rep.hidden = parc;
+          form.querySelector('[data-field="valor"] label').firstChild.textContent = parc ? 'Valor total' : 'Valor';
+          const txt = $('[data-parc-entrada-txt]', dlg); if (txt) txt.textContent = `A 1ª parcela já foi ${tipo === 'receita' ? 'recebida' : 'paga'} (entrada)`;
+        }
+        if (form.parcelar) form.parcelar.closest('label').hidden = Boolean(form.repetir?.checked);
+        $('[data-pago-box]', dlg).hidden = parc ? false : st !== 'pago';
+        form.querySelector('[data-field="data_pagamento"]').hidden = parc && !form.parc_entrada.checked;
         $('[data-so-receita]', dlg).hidden = tipo !== 'receita';
         $('[data-so-despesa]', dlg).hidden = tipo !== 'despesa';
         dlg.querySelectorAll('.seg').forEach((s) => s.classList.toggle('on', s.querySelector('input').checked));
@@ -113,8 +175,19 @@ export function abrirLancamento(opts = {}) {
           if (!form.data_vencimento.dataset.mexeu) form.data_vencimento.value = e.target.value;
         }
         if (e.target.name === 'data_vencimento') form.data_vencimento.dataset.mexeu = '1';
+        if (e.target.name === 'data_competencia' && form.parc_primeira && !form.parc_primeira.dataset.mexeu) form.parc_primeira.value = e.target.value;
+        if (e.target.name === 'parc_primeira') form.parc_primeira.dataset.mexeu = '1';
+        if (['parcelar', 'parc_n', 'parc_modo', 'parc_dias', 'parc_primeira', 'valor', 'data_competencia'].includes(e.target.name) && parcelando()) regerar();
+        if (e.target.name === 'parc_entrada') desenharParcelas();
+        if (e.target.dataset?.pv !== undefined) parcelas[Number(e.target.dataset.pv)].vencimento = e.target.value;
+        if (e.target.dataset?.pval !== undefined) { const c = lerValor(e.target.value); parcelas[Number(e.target.dataset.pval)].valor = c; if (Number.isFinite(c)) e.target.value = valorInput(c); somarParcelas(); }
         sincronizar();
       });
+      form.addEventListener('input', (e) => {
+        if (e.target.dataset?.pval !== undefined) { parcelas[Number(e.target.dataset.pval)].valor = lerValor(e.target.value); somarParcelas(); }
+        if (['valor', 'parc_n', 'parc_dias', 'parc_primeira'].includes(e.target.name) && parcelando()) regerar();
+      });
+      $('[data-ver-parcelas]', dlg)?.addEventListener('click', () => { fechar(''); verParcelas(v.parcela_grupo); });
       $('[data-ver-comp]', dlg)?.addEventListener('click', () => verComprovante(v.comprovante_path));
       $('[data-tirar-comp]', dlg)?.addEventListener('click', () => { tirarComp = true; $('[data-comp-atual]', dlg).innerHTML = '<span class="muted">O comprovante será removido ao salvar.</span>'; });
       $('[data-excluir]', dlg)?.addEventListener('click', async () => {
@@ -123,6 +196,7 @@ export function abrirLancamento(opts = {}) {
       $('[data-historico]', dlg)?.addEventListener('click', () => historico('lancamentos', l.id, l.descricao));
       const salvar = () => ocupado($('[data-salvar]', dlg), async () => {
         limparErros(form);
+        if (parcelando()) { await salvarParcelado(form, tipo, parcelas, v, fechar, opts); return; }
         const d = lerForm(form, tipo);
         const falha = validar(d);
         if (falha) { erroCampo(form, falha[0], falha[1]); return; }
@@ -219,7 +293,95 @@ async function criarRecorrente(d) {
   return gerado;
 }
 
+async function salvarParcelado(form, tipo, parcelas, v, fechar, opts) {
+  const entrada = form.parc_entrada.checked;
+  const base = lerForm(form, tipo);
+  const total = dinheiro(form, 'valor');
+  const n = parcelas.length;
+  const falha = validar({ ...base, status: entrada ? 'pago' : 'pendente', data_vencimento: parcelas[0]?.vencimento || base.data_competencia, data_pagamento: entrada ? form.data_pagamento.value : null, conta_id: form.conta_id.value || null });
+  if (falha) { erroCampo(form, falha[0], falha[1]); return; }
+  if (!(n >= 2 && n <= 60)) { erroCampo(form, 'parc_n', 'Use de 2 a 60 parcelas.'); return; }
+  for (let i = 0; i < n; i++) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(parcelas[i].vencimento || '')) { toast(`Informe o vencimento da parcela ${i + 1}.`, 'erro'); form.querySelector(`[data-pv="${i}"]`)?.focus(); return; }
+    if (parcelas[i].vencimento < somaDias(base.data_competencia, -366)) { toast(`O vencimento da parcela ${i + 1} está antes demais da data do lançamento.`, 'erro'); return; }
+    if (!Number.isFinite(parcelas[i].valor) || parcelas[i].valor <= 0) { toast(`Valor inválido na parcela ${i + 1}.`, 'erro'); form.querySelector(`[data-pval="${i}"]`)?.focus(); return; }
+  }
+  const soma = parcelas.reduce((t, x) => t + x.valor, 0);
+  if (soma !== total) { toast(`As parcelas somam ${brl(soma)}, mas o total é ${brl(total)}. Ajuste os valores.`, 'erro'); return; }
+  if (entrada && parcelas[0].vencimento > hoje() && !(await confirmar({ titulo: 'Entrada com vencimento futuro', texto: `A 1ª parcela vence em ${dataBR(parcelas[0].vencimento)}, mas foi marcada como já ${tipo === 'receita' ? 'recebida' : 'paga'} hoje. Continuar?`, botao: 'Continuar' }))) return;
+  try {
+    const arquivo = form.comprovante.files[0];
+    const comp = arquivo ? await api.enviarComprovante(arquivo, base.data_competencia.slice(0, 7)) : null;
+    const grupo = novoId();
+    const linhas = parcelas.map((x, i) => {
+      const paga = entrada && i === 0;
+      return {
+        ...base, id: novoId(),
+        descricao: descricaoParcela(base.descricao, i + 1, n),
+        valor: x.valor / 100,
+        data_vencimento: x.vencimento,
+        status: paga ? 'pago' : 'pendente',
+        data_pagamento: paga ? form.data_pagamento.value : null,
+        conta_id: form.conta_id.value || null,
+        comprovante_path: i === 0 ? comp : null,
+        parcela_grupo: grupo, parcela_num: i + 1, parcela_total: n,
+        ...(v.pedido_id ? { pedido_id: v.pedido_id } : {}),
+      };
+    });
+    const salvos = await criar('lancamentos', linhas);   // todas de uma vez: ou grava tudo, ou nada
+    toast(`${tipo === 'receita' ? 'Receita' : 'Despesa'} dividida em ${n} parcelas.`);
+    fechar('ok');
+    opts.aoSalvar?.(salvos[0]);
+  } catch (ex) { erro(ex); }
+}
+
+export function verParcelas(grupo) {
+  const itens = S.lancamentos.filter((x) => x.parcela_grupo === grupo).sort((a, b) => a.parcela_num - b.parcela_num);
+  const total = itens.reduce((t, x) => t + (x.status === 'cancelado' ? 0 : centavos(x.valor)), 0);
+  const pagos = itens.filter((x) => x.status === 'pago').reduce((t, x) => t + centavos(x.valor), 0);
+  const { dlg, fechar } = modal({
+    titulo: 'Parcelas', largura: 'md',
+    corpo: `<div class="totals"><span><small>Total</small><strong>${brl(total)}</strong></span><span><small>${itens[0]?.tipo === 'receita' ? 'Recebido' : 'Pago'}</small><strong class="pos">${brl(pagos)}</strong></span><span><small>Falta</small><strong>${brl(total - pagos)}</strong></span></div>
+      <ul class="list">${itens.map((x) => `<li class="list-item"><span class="li-date">${x.parcela_num}/${x.parcela_total}</span>
+        <span class="li-main"><button type="button" class="row-open" data-abrir-parc="${x.id}"><strong>vence ${dataBR(x.data_vencimento)}</strong></button><small>${x.data_pagamento ? `${x.tipo === 'receita' ? 'recebida' : 'paga'} em ${dataBR(x.data_pagamento)}` : ''}</small></span>
+        <span class="li-val">${brl(centavos(x.valor))}</span>${selo(statusEfetivo(x))}
+        ${x.status === 'pendente' && podeEditarLanc(x) ? `<button type="button" class="btn btn-sm btn-ghost" data-baixar-parc="${x.id}">${icon('check')}<span class="sr-only">Registrar pagamento</span></button>` : ''}</li>`).join('')}</ul>`,
+    rodape: '<button type="button" class="btn btn-accent" data-fechar>Fechar</button>',
+  });
+  dlg.querySelectorAll('[data-abrir-parc]').forEach((b) => b.addEventListener('click', () => { fechar(''); abrirLancamento({ lanc: S.lancamentos.find((x) => x.id === b.dataset.abrirParc) }); }));
+  dlg.querySelectorAll('[data-baixar-parc]').forEach((b) => b.addEventListener('click', () => { fechar(''); baixar(S.lancamentos.find((x) => x.id === b.dataset.baixarParc)); }));
+}
+
+/** Pergunta com três saídas: cancelar, só esta, todas. Retorna '', 'uma' ou 'todas'. */
+function escolherExclusao(l, qtd) {
+  return new Promise((resolve) => {
+    modal({
+      titulo: 'Excluir parcela?', largura: 'sm',
+      corpo: `<p class="dlg-texto"><strong>${esc(l.descricao)}</strong> — ${brl(centavos(l.valor))}.<br>Este lançamento faz parte de um parcelamento com ${qtd} parcelas. A exclusão não pode ser desfeita (fica no histórico). Se a ${l.tipo === 'receita' ? 'venda' : 'compra'} não aconteceu, prefira marcar como <em>Cancelado</em>.</p>`,
+      rodape: `<button type="button" class="btn btn-ghost mr-auto" data-fechar>Voltar</button>
+        <button type="button" class="btn btn-ghost perigo" data-r="uma">Só esta parcela</button>
+        <button type="button" class="btn btn-perigo" data-r="todas">Todas as ${qtd}</button>`,
+      aoAbrir: (dlg, fechar) => dlg.querySelectorAll('[data-r]').forEach((b) => b.addEventListener('click', () => fechar(b.dataset.r))),
+      aoFechar: (r) => resolve(r || ''),
+    });
+  });
+}
+
 export async function excluirLancamento(l) {
+  if (l.parcela_grupo) {
+    const grupo = S.lancamentos.filter((x) => x.parcela_grupo === l.parcela_grupo);
+    const r = grupo.length > 1 ? await escolherExclusao(l, grupo.length) : 'uma';
+    if (!r) return false;
+    try {
+      const alvo = r === 'todas' ? grupo : [l];
+      for (const x of alvo) {
+        await remover('lancamentos', x.id);
+        if (x.comprovante_path) api.apagarComprovante(x.comprovante_path).catch(() => {});
+      }
+      toast(r === 'todas' ? `${alvo.length} parcelas excluídas.` : 'Parcela excluída.');
+      return true;
+    } catch (e) { erro(e); return false; }
+  }
   const ok = await confirmar({
     titulo: 'Excluir lançamento?',
     texto: `<strong>${esc(l.descricao)}</strong> — ${brl(centavos(l.valor))} em ${dataBR(l.data_competencia)}.<br>Essa ação não pode ser desfeita (fica registrada no histórico). Se a venda ou o gasto não aconteceu, prefira marcar como <em>Cancelado</em>.`,

@@ -367,3 +367,36 @@ export function calendarioMes(lancs, mes, ref = hoje()) {
 }
 
 export { iso };
+
+/** Soma n meses mantendo o dia (31/01 + 1 mês → 28/02; + 2 meses → 31/03). */
+export function somaMesesMesmoDia(isoData, n) {
+  const [a, m, d] = isoData.split('-').map(Number);
+  const alvo = new Date(a, m - 1 + n, 1);
+  const ultimo = new Date(alvo.getFullYear(), alvo.getMonth() + 1, 0).getDate();
+  alvo.setDate(Math.min(d, ultimo));
+  return iso(alvo);
+}
+
+/**
+ * Divide um valor em parcelas. Os centavos que sobram da divisão vão para a 1ª parcela,
+ * de modo que a soma das parcelas é sempre exatamente o total.
+ * modo: 'mensal' (mesmo dia a cada mês) | 'dias' (a cada N dias)
+ */
+export function gerarParcelas(totalCentavos, n, primeiroVencimento, { modo = 'mensal', dias = 30 } = {}) {
+  const qtd = Math.max(1, Math.floor(n));
+  const base = Math.floor(totalCentavos / qtd);
+  const resto = totalCentavos - base * qtd;
+  return Array.from({ length: qtd }, (_, i) => ({
+    num: i + 1,
+    vencimento: modo === 'dias'
+      ? (() => { const dt = new Date(`${primeiroVencimento}T12:00:00`); dt.setDate(dt.getDate() + i * Math.max(1, Math.floor(dias))); return iso(dt); })()
+      : somaMesesMesmoDia(primeiroVencimento, i),
+    valor: base + (i === 0 ? resto : 0),
+  }));
+}
+
+/** Descrição com o número da parcela, respeitando o limite de 120 caracteres. */
+export const descricaoParcela = (desc, num, total) => {
+  const suf = ` (${num}/${total})`;
+  return `${desc.slice(0, 120 - suf.length).trim()}${suf}`;
+};
