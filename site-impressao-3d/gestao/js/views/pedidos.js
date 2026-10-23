@@ -4,7 +4,7 @@ import { calcular, situacao, ordenarFila, resumo, STATUS, ATIVOS, PRIORIDADES, i
 import { brl, esc, norm, dataBR, dataCurta, hoje, somaDias, pct } from '../format.js';
 import { icon, vazio } from '../ui.js';
 import { trocarParams } from '../nav.js';
-import { abrirPedido, moverPedido, ajustarProntas, fmtGramas, fmtTempo, receitaDoPedido } from './pedido-form.js';
+import { abrirPedido, moverPedido, ajustarProntas, fmtGramas, fmtTempo, receitaDoPedido, resumoPagamento } from './pedido-form.js';
 
 const COLUNAS = ['aguardando', 'producao', 'pronto', 'entregue'];
 let el; let aba = 'fila'; let busca = '';
@@ -64,7 +64,8 @@ function cartao(p) {
     ${p.status === 'producao' ? `<div class="k-prog"><span class="meter meter-progresso" role="img" aria-label="${p.unidades_prontas} de ${p.quantidade} prontas"><span style="width:${c.progresso * 100}%"></span></span>
       <span>${p.unidades_prontas}/${p.quantidade}</span>${edit ? `<button type="button" class="icon-btn sm" data-mais="${p.id}" aria-label="Mais uma unidade pronta" ${p.unidades_prontas >= p.quantidade ? 'disabled' : ''}>${icon('plus')}</button>` : ''}</div>` : ''}
     <p class="k-meta">${c.gramasTotal !== null ? `${icon('printer')}${fmtGramas(p.status === 'entregue' ? c.gramasTotal : c.gramasRestantes)}${fil ? ` ${esc(fil)}` : ''}` : '<span class="muted">sem gramas</span>'}${c.tempoTotalMin ? ` · ${fmtTempo(c.tempoTotalMin)}` : ''}${c.preco !== null ? ` · ${brl(c.preco)}` : ''}</p>
-    ${p.status === 'entregue' && c.preco !== null && !receitaDoPedido(p) ? '<p class="k-meta warn-inline">receita não lançada</p>' : ''}
+    ${(() => { const r = resumoPagamento(p); if (r) return `<p class="k-meta ${r.falta && p.status === 'entregue' ? 'warn-inline' : ''}">${icon('wallet')}${r.texto}${r.falta && r.pagas ? ` · falta ${brl(r.falta)}` : ''}</p>`;
+      return p.status === 'entregue' && c.preco !== null ? '<p class="k-meta warn-inline">receita não lançada</p>' : ''; })()}
     ${edit ? `<div class="k-move">
       ${i > 0 ? `<button type="button" class="btn btn-sm btn-ghost" data-mover="${p.id}" data-para="${COLUNAS[i - 1]}" aria-label="Voltar para ${STATUS[COLUNAS[i - 1]].nome}">${icon('chevron-left')}</button>` : '<span></span>'}
       ${i < COLUNAS.length - 1 ? `<button type="button" class="btn btn-sm btn-ghost k-next" data-mover="${p.id}" data-para="${COLUNAS[i + 1]}">${['Iniciar', 'Concluir', 'Entregar'][i]} ${icon('chevron')}</button>` : ''}

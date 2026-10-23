@@ -686,3 +686,11 @@ details.sec[open] > summary { margin-bottom: 12px; }
 .parc-tbl .input-money.sm input { width: 120px; }
 .parc-soma { display: flex; align-items: center; gap: 6px; font-size: .86rem; font-weight: 600; }
 .parc-soma.pos { color: var(--pos); } .parc-soma.neg { color: var(--neg); }
+.pag-box { display: grid; gap: 12px; margin-top: 10px; }
+.pg-check { align-self: end; padding-bottom: 10px; }
+details.sec, .parc-box, .pag-box, .form > * { min-width: 0; }
+@media (max-width: 560px) {
+  .parc-tbl input[type="date"] { max-width: 138px; font-size: .85rem; }
+  .parc-tbl .input-money.sm input { width: 92px; }
+  .parc-tbl th, .parc-tbl td { padding-left: 4px; padding-right: 4px; }
+}

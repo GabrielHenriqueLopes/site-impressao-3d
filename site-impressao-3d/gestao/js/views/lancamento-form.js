@@ -344,7 +344,7 @@ export function verParcelas(grupo) {
     corpo: `<div class="totals"><span><small>Total</small><strong>${brl(total)}</strong></span><span><small>${itens[0]?.tipo === 'receita' ? 'Recebido' : 'Pago'}</small><strong class="pos">${brl(pagos)}</strong></span><span><small>Falta</small><strong>${brl(total - pagos)}</strong></span></div>
       <ul class="list">${itens.map((x) => `<li class="list-item"><span class="li-date">${x.parcela_num}/${x.parcela_total}</span>
         <span class="li-main"><button type="button" class="row-open" data-abrir-parc="${x.id}"><strong>vence ${dataBR(x.data_vencimento)}</strong></button><small>${x.data_pagamento ? `${x.tipo === 'receita' ? 'recebida' : 'paga'} em ${dataBR(x.data_pagamento)}` : ''}</small></span>
-        <span class="li-val">${brl(centavos(x.valor))}</span>${selo(statusEfetivo(x))}
+        <span class="li-val">${brl(centavos(x.valor))}</span>${selo(x.tipo === 'receita' && x.status === 'pago' ? 'recebido' : statusEfetivo(x))}
         ${x.status === 'pendente' && podeEditarLanc(x) ? `<button type="button" class="btn btn-sm btn-ghost" data-baixar-parc="${x.id}">${icon('check')}<span class="sr-only">Registrar pagamento</span></button>` : ''}</li>`).join('')}</ul>`,
     rodape: '<button type="button" class="btn btn-accent" data-fechar>Fechar</button>',
   });

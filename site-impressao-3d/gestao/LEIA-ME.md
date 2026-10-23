@@ -160,3 +160,12 @@ No formulário de **+ Receita** ou **+ Despesa**, marque **Parcelar**:
 - Na receita de um **pedido** entregue, o parcelamento também funciona, e o pedido continua sem poder ser lançado duas vezes.
 
 Requer rodar de novo o `supabase/schema.sql` (ele acrescenta as colunas de parcela; nada é apagado).
+
+
+## Pagamento do cliente no pedido
+
+No cadastro do pedido, logo abaixo de **Preço e custos**, fica a área **Pagamento do cliente**:
+- **À vista** é o padrão em pedidos novos. O valor total vai para **A receber** na data escolhida (por padrão, o prazo de entrega). Se já recebeu, marque **Já recebido**. Sem preço informado, nada é lançado.
+- **Parcelado:** mesma tabela de parcelas do financeiro (mensal ou a cada X dias, valores e datas editáveis, sinal já recebido).
+- **Lançar depois:** nada vai para o financeiro agora. Ao entregar, o aplicativo pergunta.
+- A venda conta no faturamento na **data em que o pedido foi recebido**. Depois de lançado, o pedido mostra "3x · 1 de 3 recebida · falta R$ …", e o cartão da fila também.

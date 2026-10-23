@@ -3,7 +3,9 @@ import { S, criar, alterar, remover, podeGerir, podeEditarPedido, novoId } from 
 import { calcular, custoKgFilamento, situacao, STATUS, PRIORIDADES } from '../pedidos-calc.js';
 import { modal, confirmar, campo, erroCampo, limparErros, ligarDinheiro, ocupado, toast, erro, icon, $ } from '../ui.js';
 import { esc, hoje, brl, centavos, dataBR, dataHora, ORIGENS, lerValor, valorInput, somaDias, pct } from '../format.js';
-import { abrirLancamento, historico } from './lancamento-form.js';
+import { abrirLancamento, historico, verParcelas } from './lancamento-form.js';
+import { gerarParcelas, descricaoParcela } from '../finance.js';
+import { FORMAS } from '../format.js';
 
 const gramas = (g) => (g === null || g === undefined ? '—' : g >= 1000 ? `${(g / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} kg` : `${g.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} g`);
 export const fmtGramas = gramas;
@@ -16,6 +18,63 @@ const dec = (v) => (v === null || v === undefined || v === '' ? '' : String(v).r
 const lerNum = (s) => { const t = String(s ?? '').trim().replace(/\./g, '').replace(',', '.'); if (!t) return null; const n = Number(t); return Number.isFinite(n) ? n : NaN; };
 const lerDinheiro = (s) => { if (!String(s ?? '').trim()) return null; const c = lerValor(s); return Number.isFinite(c) ? c / 100 : NaN; };
 export const receitaDoPedido = (p) => S.lancamentos.find((l) => l.pedido_id === p.id);
+export const receitasDoPedido = (p) => S.lancamentos.filter((l) => l.pedido_id === p.id).sort((a, b) => (a.parcela_num || 1) - (b.parcela_num || 1));
+
+/** Resumo do pagamento já lançado de um pedido: "3x · 1 de 3 recebida", etc. */
+export function resumoPagamento(p) {
+  const rs = receitasDoPedido(p).filter((l) => l.status !== 'cancelado');
+  if (!rs.length) return null;
+  const pagas = rs.filter((l) => l.status === 'pago');
+  const total = rs.reduce((t, l) => t + centavos(l.valor), 0);
+  const recebido = pagas.reduce((t, l) => t + centavos(l.valor), 0);
+  return { qtd: rs.length, pagas: pagas.length, total, recebido, falta: total - recebido, grupo: rs[0].parcela_grupo, primeira: rs[0],
+    texto: rs.length > 1 ? `${rs.length}x · ${pagas.length} de ${rs.length} recebida${pagas.length === 1 ? '' : 's'}` : pagas.length ? 'recebido' : 'a receber' };
+}
+
+const opcoesVenda = () => S.categorias.filter((c) => c.tipo === 'receita' && c.ativo && ['venda', 'frete', 'outra'].includes(c.grupo));
+
+function blocoPagamento(v, rec, novo) {
+  if (rec) {
+    const r = resumoPagamento(v);
+    return `<details class="sec" open><summary><h3>${icon('arrow-down')} Pagamento do cliente</h3></summary>
+      <p class="note">${icon('check-circle')} Lançado no financeiro: <strong>${brl(r.total)}</strong> · ${r.texto}${r.falta ? ` · falta ${brl(r.falta)}` : ''}.
+        ${r.grupo ? '<button type="button" class="btn-link" data-ver-pag>Ver parcelas</button>' : '<button type="button" class="btn-link" data-ver-pag>Ver lançamento</button>'}</p></details>`;
+  }
+  if (v.status === 'cancelado') return '';
+  const cats = opcoesVenda();
+  const conta = S.contas.find((c) => c.ativo)?.id || '';
+  return `<details class="sec" open data-pag-sec><summary><h3>${icon('arrow-down')} Pagamento do cliente</h3><span class="muted small">entra em "A receber" no financeiro</span></summary>
+    <div class="chips" role="radiogroup" aria-label="Como o cliente vai pagar">
+      <label class="chip"><input type="radio" name="pg_modo" value="depois" ${novo ? '' : 'checked'}><span>Lançar depois</span></label>
+      <label class="chip"><input type="radio" name="pg_modo" value="vista" ${novo ? 'checked' : ''}><span>À vista</span></label>
+      <label class="chip"><input type="radio" name="pg_modo" value="parcelado"><span>Parcelado</span></label>
+    </div>
+    <p class="field-help" data-pg-ajuda>O aplicativo pergunta de novo quando o pedido for entregue.</p>
+    <div data-pg-box hidden class="pag-box">
+      <div class="grid-3">
+        ${campo({ nome: 'pg_cat', rotulo: 'Categoria', valor: cats.find((c) => c.grupo === 'venda')?.id || '', opcoes: cats.map((c) => ({ valor: c.id, rotulo: c.nome })) })}
+        ${campo({ nome: 'pg_conta', rotulo: 'Conta', valor: conta, opcoes: [{ valor: '', rotulo: 'Escolha…' }].concat(S.contas.filter((c) => c.ativo).map((c) => ({ valor: c.id, rotulo: c.nome }))) })}
+        ${campo({ nome: 'pg_forma', rotulo: 'Forma', valor: 'pix', opcoes: Object.entries(FORMAS).map(([k, t]) => ({ valor: k, rotulo: t })) })}
+      </div>
+      <div class="grid-2" data-pg-vista>
+        ${campo({ nome: 'pg_venc', rotulo: 'Recebe em', tipo: 'date', valor: v.prazo || hoje() })}
+        <label class="check pg-check"><input type="checkbox" name="pg_pago"> <span>Já recebido (hoje)</span></label>
+      </div>
+      <div data-pg-parc hidden>
+        <div class="grid-4">
+          ${campo({ nome: 'pg_n', rotulo: 'Nº de parcelas', tipo: 'number', valor: 2, attrs: 'min="2" max="60" step="1" inputmode="numeric"' })}
+          ${campo({ nome: 'pg_int', rotulo: 'Intervalo', valor: 'mensal', opcoes: [{ valor: 'mensal', rotulo: 'Mensal' }, { valor: 'dias', rotulo: 'A cada X dias' }] })}
+          <div data-pg-dias-wrap hidden>${campo({ nome: 'pg_dias', rotulo: 'A cada quantos dias', tipo: 'number', valor: 30, attrs: 'min="1" max="365" step="1" inputmode="numeric"' })}</div>
+          ${campo({ nome: 'pg_primeira', rotulo: '1ª parcela vence em', tipo: 'date', valor: hoje() })}
+        </div>
+        <label class="check"><input type="checkbox" name="pg_entrada"> <span>A 1ª parcela já foi recebida (sinal/entrada)</span></label>
+        <div class="table-wrap"><table class="tbl compact parc-tbl"><thead><tr><th>Parcela</th><th>Vencimento</th><th class="num">Valor</th></tr></thead><tbody data-pg-linhas></tbody></table></div>
+        <p class="parc-soma" data-pg-soma aria-live="polite"></p>
+      </div>
+      <p class="hyp">${icon('info')} <span>A venda entra no faturamento na data em que o pedido foi recebido. Cada parcela entra no caixa quando for recebida.</span></p>
+    </div>
+  </details>`;
+}
 
 /** Abre o pedido (novo ou existente). */
 export function abrirPedido(p = null) {
@@ -85,9 +144,10 @@ export function abrirPedido(p = null) {
       </div>
     </details>
 
+    ${blocoPagamento(v, rec, !editando)}
+
     <section class="calc-box" data-calc aria-live="polite"></section>
     ${campo({ nome: 'observacoes', rotulo: 'Descrição / observações', tipo: 'textarea', valor: v.observacoes || '', attrs: 'maxlength="2000" placeholder="Cores, tamanho, detalhes combinados com o cliente…"' })}
-    ${rec ? `<p class="note">${icon('check-circle')} Receita lançada no financeiro: <strong>${esc(rec.descricao)}</strong> · ${brl(centavos(rec.valor))} (${rec.status === 'pago' ? 'recebida' : 'a receber'}).</p>` : ''}
 
     <datalist id="sug-prod">${[...new Set(S.pedidos.map((x) => x.produto))].slice(0, 80).map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
     <datalist id="sug-cli-p">${[...new Set(S.pedidos.map((x) => x.cliente).concat(S.lancamentos.filter((l) => l.cliente).map((l) => l.cliente)))].slice(0, 120).map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
@@ -130,6 +190,8 @@ export function abrirPedido(p = null) {
       };
       atualizarCalc();
       f.addEventListener('input', atualizarCalc);
+      const pag = ligarPagamento(f, dlg);
+      $('[data-ver-pag]', dlg)?.addEventListener('click', () => { fechar(''); const r = resumoPagamento(p); if (r.grupo) verParcelas(r.grupo); else abrirLancamento({ lanc: r.primeira }); });
       f.addEventListener('change', (e) => {
         if (e.target.name === 'filamento_id') {
           const fil = S.filamentos.find((x) => x.id === e.target.value);
@@ -152,24 +214,127 @@ export function abrirPedido(p = null) {
         const d = dados();
         const falha = validar(d, editando ? p : null);
         if (falha) { erroCampo(f, falha[0], falha[1]); return; }
+        const falhaPag = pag.validar(d);
+        if (falhaPag) { if (falhaPag[0]) erroCampo(f, falhaPag[0], falhaPag[1]); else toast(falhaPag[1], 'erro'); return; }
+        let salvo;
         try {
-          if (editando) {
-            const antes = p.status;
-            const salvo = await alterar('pedidos', p.id, d);
-            toast('Pedido atualizado.');
-            fechar('ok');
-            if (antes !== 'entregue' && salvo.status === 'entregue') sugerirReceita(salvo);
-          } else {
-            const salvo = await criar('pedidos', { id: novoId(), ...d });
-            toast(`Pedido ${salvo.codigo} cadastrado.`);
-            fechar('ok');
+          salvo = editando ? await alterar('pedidos', p.id, d) : await criar('pedidos', { id: novoId(), ...d });
+        } catch (ex) { erro(ex); return; }
+        let lancado = 0;
+        if (pag.modo() !== 'depois') {
+          try { lancado = (await criar('lancamentos', pag.linhas(salvo))).length; } catch (ex) {
+            erro(new Error(`O pedido foi salvo, mas o pagamento não foi lançado no financeiro: ${ex.message}`)); fechar('ok'); return;
           }
-        } catch (ex) { erro(ex); }
+        }
+        toast(`${editando ? 'Pedido atualizado' : `Pedido ${salvo.codigo} cadastrado`}${lancado ? ` · ${lancado > 1 ? `${lancado} parcelas lançadas` : 'pagamento lançado'} em "A receber"` : ''}.`);
+        fechar('ok');
+        if (editando && p.status !== 'entregue' && salvo.status === 'entregue' && !lancado) sugerirReceita(salvo);
       });
       $('[data-salvar]', dlg)?.addEventListener('click', salvar);
       f.addEventListener('submit', (e) => { e.preventDefault(); salvar(); });
     },
   });
+}
+
+/** Controla a área "Pagamento do cliente" do formulário de pedido. */
+function ligarPagamento(f, dlg) {
+  const sec = $('[data-pag-sec]', dlg);
+  let parcelas = []; let assinatura = '';
+  const modo = () => (sec ? f.querySelector('[name=pg_modo]:checked')?.value || 'depois' : 'depois');
+  const total = () => lerValor(f.preco_venda.value);
+  const desenhar = () => {
+    $('[data-pg-linhas]', dlg).innerHTML = parcelas.map((x, i) => `<tr><td>${i + 1}/${parcelas.length}${i === 0 && f.pg_entrada.checked ? ' <span class="tag tag-ok">entrada</span>' : ''}</td>
+      <td><input type="date" data-gv="${i}" value="${x.vencimento}" aria-label="Vencimento da parcela ${i + 1}"></td>
+      <td class="num"><div class="input-money sm"><span aria-hidden="true">R$</span><input type="text" inputmode="decimal" data-gval="${i}" value="${valorInput(x.valor)}" aria-label="Valor da parcela ${i + 1}"></div></td></tr>`).join('');
+    somar();
+  };
+  const somar = () => {
+    const t = total(); const el = $('[data-pg-soma]', dlg);
+    if (!Number.isFinite(t) || t <= 0) { el.className = 'parc-soma'; el.textContent = 'Informe o preço de venda para dividir.'; return; }
+    const soma = parcelas.reduce((a, x) => a + (Number.isFinite(x.valor) ? x.valor : 0), 0); const dif = t - soma;
+    el.className = `parc-soma ${dif ? 'neg' : 'pos'}`;
+    el.innerHTML = dif ? `${icon('alert')} As parcelas somam ${brl(soma)}; ${dif > 0 ? 'faltam' : 'sobram'} ${brl(Math.abs(dif))} para ${brl(t)}.`
+      : `${icon('check')} ${parcelas.length} parcelas somando ${brl(soma)}${new Set(parcelas.map((x) => x.valor)).size === 1 ? ` (${parcelas.length}x de ${brl(parcelas[0].valor)})` : ''}.`;
+  };
+  const regerar = (forcar) => {
+    const t = total(); const n = Math.min(60, Math.max(2, Math.floor(Number(f.pg_n.value) || 2)));
+    const nova = [t, n, f.pg_primeira.value, f.pg_int.value, f.pg_dias.value].join('|');
+    if (!forcar && nova === assinatura && parcelas.length) return;
+    assinatura = nova;
+    parcelas = gerarParcelas(Number.isFinite(t) && t > 0 ? t : 0, n, f.pg_primeira.value || hoje(), { modo: f.pg_int.value, dias: Number(f.pg_dias.value) || 30 });
+    desenhar();
+  };
+  const sinc = () => {
+    if (!sec) return;
+    const m = modo();
+    $('[data-pg-box]', dlg).hidden = m === 'depois';
+    $('[data-pg-vista]', dlg).hidden = m !== 'vista';
+    $('[data-pg-parc]', dlg).hidden = m !== 'parcelado';
+    $('[data-pg-dias-wrap]', dlg).hidden = f.pg_int.value !== 'dias';
+    $('[data-pg-ajuda]', dlg).textContent = m === 'depois' ? 'O aplicativo pergunta de novo quando o pedido for entregue.'
+      : m === 'vista' ? 'Lança o valor total em "A receber" na data escolhida (marque se já recebeu). Sem preço informado, nada é lançado.' : 'Cada parcela vira uma conta a receber, com o próprio vencimento.';
+    if (m === 'parcelado') regerar();
+  };
+  if (sec) {
+    f.addEventListener('change', (e) => {
+      if (e.target.dataset?.gv !== undefined) parcelas[Number(e.target.dataset.gv)].vencimento = e.target.value;
+      if (e.target.dataset?.gval !== undefined) { const c = lerValor(e.target.value); parcelas[Number(e.target.dataset.gval)].valor = c; if (Number.isFinite(c)) e.target.value = valorInput(c); somar(); }
+      if (e.target.name === 'pg_entrada') desenhar();
+      if (e.target.name === 'pg_modo') f.dataset.pgEscolhido = '1';
+      if (['pg_modo', 'pg_int', 'pg_n', 'pg_dias', 'pg_primeira', 'preco_venda'].includes(e.target.name)) sinc();
+    });
+    f.addEventListener('input', (e) => {
+      if (e.target.dataset?.gval !== undefined) { parcelas[Number(e.target.dataset.gval)].valor = lerValor(e.target.value); somar(); }
+      if (['preco_venda', 'pg_n', 'pg_dias', 'pg_primeira'].includes(e.target.name) && modo() === 'parcelado') regerar();
+    });
+    sinc();
+  }
+  // padrão automático (à vista) só vale quando há preço; sem preço, fica para depois
+  const efetivo = () => { const m = modo(); const t = total(); return m !== 'depois' && !f.dataset.pgEscolhido && !(Number.isFinite(t) && t > 0) ? 'depois' : m; };
+  return {
+    modo: efetivo,
+    validar(d) {
+      const m = efetivo();
+      if (m === 'depois') return null;
+      const t = total();
+      if (!Number.isFinite(t) || t <= 0) return ['preco_venda', 'Para lançar o pagamento, informe o preço de venda.'];
+      if (!f.pg_cat.value) return ['pg_cat', 'Cadastre uma categoria de venda em Configurações → Categorias.'];
+      if (m === 'vista') {
+        if (!f.pg_venc.value) return ['pg_venc', 'Informe a data.'];
+        if (f.pg_venc.value < somaDias(d.recebido_em, -366)) return ['pg_venc', 'Data muito anterior ao pedido.'];
+        if (f.pg_pago.checked && !f.pg_conta.value) return ['pg_conta', 'Escolha a conta que recebeu.'];
+        return null;
+      }
+      if (f.pg_entrada.checked && !f.pg_conta.value) return ['pg_conta', 'Escolha a conta que recebeu a entrada.'];
+      for (let i = 0; i < parcelas.length; i++) {
+        if (!parcelas[i].vencimento) return [null, `Informe o vencimento da parcela ${i + 1}.`];
+        if (parcelas[i].vencimento < somaDias(d.recebido_em, -366)) return [null, `O vencimento da parcela ${i + 1} está antes demais do pedido.`];
+        if (!Number.isFinite(parcelas[i].valor) || parcelas[i].valor <= 0) return [null, `Valor inválido na parcela ${i + 1}.`];
+      }
+      const soma = parcelas.reduce((a, x) => a + x.valor, 0);
+      if (soma !== t) return [null, `As parcelas somam ${brl(soma)}, mas o preço é ${brl(t)}. Ajuste os valores.`];
+      return null;
+    },
+    linhas(ped) {
+      const base = {
+        tipo: 'receita', categoria_id: f.pg_cat.value, data_competencia: ped.recebido_em, conta_id: f.pg_conta.value || null,
+        forma_pagamento: f.pg_forma.value || null, origem: ped.origem || null, cliente: ped.cliente, natureza: null,
+        observacoes: null, comprovante_path: null, pedido_id: ped.id,
+      };
+      const desc = `${ped.codigo} · ${ped.produto}`;
+      if (efetivo() === 'vista') {
+        const pago = f.pg_pago.checked;
+        return [{ ...base, id: novoId(), descricao: desc.slice(0, 120), valor: total() / 100, data_vencimento: f.pg_venc.value,
+          status: pago ? 'pago' : 'pendente', data_pagamento: pago ? hoje() : null, parcela_grupo: null, parcela_num: null, parcela_total: null }];
+      }
+      const grupo = novoId(); const n = parcelas.length;
+      return parcelas.map((x, i) => {
+        const pago = i === 0 && f.pg_entrada.checked;
+        return { ...base, id: novoId(), descricao: descricaoParcela(desc, i + 1, n), valor: x.valor / 100, data_vencimento: x.vencimento,
+          status: pago ? 'pago' : 'pendente', data_pagamento: pago ? hoje() : null, parcela_grupo: grupo, parcela_num: i + 1, parcela_total: n };
+      });
+    },
+  };
 }
 
 function lerForm(f, v) {
