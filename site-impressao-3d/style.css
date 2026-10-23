@@ -2669,3 +2669,14 @@ select option { background: #16131d; color: var(--ink); }
 @media (prefers-reduced-motion: reduce) {
   .ticker-track { animation: none; }
 }
+
+/* Título principal: o tamanho acompanha a largura da coluna de texto,
+   para "IMPRESSÃO" nunca passar da borda (e ser cortado pelo efeito metálico). */
+.hero-copy { container-type: inline-size; }
+.hero-title {
+  font-stretch: 100%;
+  font-size: clamp(2.2rem, 14cqi, 4.2rem);
+}
+@media (min-width: 960px) {
+  .hero-title { font-size: clamp(2.4rem, 14cqi, 4.4rem); }
+}
