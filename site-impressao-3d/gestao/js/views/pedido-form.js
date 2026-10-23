@@ -205,8 +205,7 @@ export function abrirPedido(p = null) {
       });
       $('[data-hist]', dlg)?.addEventListener('click', () => historico('pedidos', p.id, p.codigo));
       $('[data-excluir]', dlg)?.addEventListener('click', async () => {
-        if (!(await confirmar({ titulo: 'Excluir pedido?', texto: `<strong>${esc(p.codigo)} · ${esc(p.produto)}</strong> para ${esc(p.cliente)}.<br>Se o pedido não vai mais acontecer, prefira mudar a etapa para <em>Cancelado</em> (fica no histórico).${rec ? '<br>A receita já lançada no financeiro <strong>não</strong> será apagada.' : ''}`, botao: 'Excluir', perigo: true }))) return;
-        try { await remover('pedidos', p.id); toast('Pedido excluído.'); fechar(''); } catch (ex) { erro(ex); }
+        if (await excluirPedido(p)) fechar('');
       });
       $('[data-receita]', dlg)?.addEventListener('click', () => { fechar(''); lancarReceita(p); });
       const salvar = () => ocupado($('[data-salvar]', dlg), async () => {
@@ -229,6 +228,7 @@ export function abrirPedido(p = null) {
         toast(`${editando ? 'Pedido atualizado' : `Pedido ${salvo.codigo} cadastrado`}${lancado ? ` · ${lancado > 1 ? `${lancado} parcelas lançadas` : 'pagamento lançado'} em "A receber"` : ''}.`);
         fechar('ok');
         if (editando && p.status !== 'entregue' && salvo.status === 'entregue' && !lancado) sugerirReceita(salvo);
+        if (editando && p.status !== 'cancelado' && salvo.status === 'cancelado') tratarCancelamento(salvo);
       });
       $('[data-salvar]', dlg)?.addEventListener('click', salvar);
       f.addEventListener('submit', (e) => { e.preventDefault(); salvar(); });
@@ -392,6 +392,53 @@ function validar(d, original) {
 }
 
 /** Muda a etapa de um pedido (arrastar no quadro ou botões). */
+/** Janela com várias saídas. opcoes: [{ valor, rotulo, perigo }]. Retorna o valor escolhido ou ''. */
+function escolher(titulo, texto, opcoes) {
+  return new Promise((resolve) => {
+    modal({
+      titulo, largura: 'sm', corpo: `<div class="dlg-texto">${texto}</div>`,
+      rodape: `<button type="button" class="btn btn-ghost mr-auto" data-fechar>Voltar</button>${opcoes.map((o) => `<button type="button" class="btn ${o.perigo ? 'btn-perigo' : 'btn-ghost'}" data-op="${o.valor}">${o.rotulo}</button>`).join('')}`,
+      aoAbrir: (dlg, fechar) => dlg.querySelectorAll('[data-op]').forEach((b) => b.addEventListener('click', () => fechar(b.dataset.op))),
+      aoFechar: (r) => resolve(r || ''),
+    });
+  });
+}
+
+/** Exclui o pedido e, se a pessoa quiser, o pagamento lançado no financeiro. */
+export async function excluirPedido(p) {
+  const rs = receitasDoPedido(p);
+  const nome = `<strong>${esc(p.codigo)} · ${esc(p.produto)}</strong> para ${esc(p.cliente)}`;
+  let comPagamento = false;
+  if (rs.length) {
+    const recebido = rs.filter((l) => l.status === 'pago').reduce((t, l) => t + centavos(l.valor), 0);
+    const total = rs.reduce((t, l) => t + centavos(l.valor), 0);
+    const r = await escolher('Excluir pedido?', `<p>${nome}.</p>
+      <p>Este pedido tem <strong>${rs.length > 1 ? `${rs.length} parcelas` : 'um pagamento'}</strong> no financeiro (${brl(total)}${recebido ? `, dos quais ${brl(recebido)} já recebidos` : ''}).</p>
+      <p class="muted small">Se o pedido só não vai mais acontecer, prefira mudar a etapa para <em>Cancelado</em>: ele fica no histórico.</p>`,
+      [{ valor: 'so', rotulo: 'Só o pedido' }, { valor: 'tudo', rotulo: 'Pedido e pagamento', perigo: true }]);
+    if (!r) return false;
+    comPagamento = r === 'tudo';
+  } else if (!(await confirmar({ titulo: 'Excluir pedido?', texto: `${nome}.<br>Se o pedido não vai mais acontecer, prefira mudar a etapa para <em>Cancelado</em> (fica no histórico).`, botao: 'Excluir', perigo: true }))) return false;
+  try {
+    if (comPagamento) for (const l of rs) await remover('lancamentos', l.id);
+    await remover('pedidos', p.id);
+    toast(comPagamento ? `Pedido e ${rs.length > 1 ? `${rs.length} parcelas` : 'pagamento'} excluídos.` : 'Pedido excluído.');
+    return true;
+  } catch (ex) { erro(ex); return false; }
+}
+
+/** Ao cancelar um pedido, oferece cancelar também o que ainda falta receber. */
+async function tratarCancelamento(p) {
+  const pend = receitasDoPedido(p).filter((l) => l.status === 'pendente');
+  if (!pend.length) return;
+  const pagos = receitasDoPedido(p).filter((l) => l.status === 'pago');
+  const r = await escolher('E o pagamento?', `<p>O pedido tem <strong>${brl(pend.reduce((t, l) => t + centavos(l.valor), 0))}</strong> ainda a receber${pend.length > 1 ? ` em ${pend.length} parcelas` : ''}.</p>
+    ${pagos.length ? `<p class="muted small">O que já foi recebido (${brl(pagos.reduce((t, l) => t + centavos(l.valor), 0))}) continua no caixa. Se o dinheiro foi devolvido, lance a devolução como despesa.</p>` : ''}`,
+    [{ valor: 'manter', rotulo: 'Manter a receber' }, { valor: 'cancelar', rotulo: 'Cancelar o que falta', perigo: true }]);
+  if (r !== 'cancelar') return;
+  try { for (const l of pend) await alterar('lancamentos', l.id, { status: 'cancelado', data_pagamento: null }); toast('Valores a receber cancelados.'); } catch (e) { erro(e); }
+}
+
 export async function moverPedido(p, status) {
   if (p.status === status) return;
   if (!podeEditarPedido(p)) { toast('Só quem criou o pedido ou um gerente pode alterá-lo.', 'erro'); return; }
@@ -400,6 +447,7 @@ export async function moverPedido(p, status) {
     const salvo = await alterar('pedidos', p.id, { status, ...(['pronto', 'entregue'].includes(status) ? { unidades_prontas: p.quantidade } : {}) });
     toast(`${salvo.codigo}: ${STATUS[status].nome}.`);
     if (status === 'entregue') sugerirReceita(salvo);
+    if (status === 'cancelado') tratarCancelamento(salvo);
   } catch (e) { erro(e); }
 }
 
