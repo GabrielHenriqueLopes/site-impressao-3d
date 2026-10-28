@@ -2680,3 +2680,15 @@ select option { background: #16131d; color: var(--ink); }
 @media (min-width: 960px) {
   .hero-title { font-size: clamp(2.4rem, 14cqi, 4.4rem); }
 }
+
+/* =================================================================
+   AJUSTE DE FOTO (definido no painel /admin)
+   O zoom usa a variável --img-scale; o efeito de hover continua
+   funcionando por cima do zoom escolhido.
+   ================================================================= */
+img[data-zoom] { transform: scale(var(--img-scale, 1)); }
+.product-card:hover .product-media img[data-zoom] { transform: scale(calc(var(--img-scale, 1) * 1.04)); }
+.gallery-item button:hover img[data-zoom] { transform: scale(calc(var(--img-scale, 1) * 1.05)); }
+.pm-media { overflow: hidden; }
+/* peça principal com ajuste diferente do padrão: as duas fotos ficam presas ao quadro */
+.reveal-stage.is-custom-fit { overflow: hidden; }

@@ -1,0 +1,112 @@
+{
+  "produtos": [
+    {
+      "nome": "Miniaturas e personagens",
+      "categoria": "Miniaturas",
+      "descricao": "Personagens e criaturas em pequena escala, com pintura detalhada à mão.",
+      "foto": "assets/images/mikasa.png",
+      "descricao_foto": "Miniatura pintada à mão",
+      "ajuste": {
+        "modo": "preencher",
+        "zoom": 100,
+        "x": 50,
+        "y": 50
+      },
+      "material": "",
+      "tecnologia": "",
+      "acabamento": "Pintura manual",
+      "personalizacao": "",
+      "exemplo": true
+    },
+    {
+      "nome": "Estatuetas decorativas",
+      "categoria": "Decoração",
+      "descricao": "Peças para estantes, mesas e ambientes, com acabamento pensado para exposição.",
+      "foto": "assets/images/est.png",
+      "descricao_foto": "Estatueta decorativa pintada à mão",
+      "ajuste": {
+        "modo": "preencher",
+        "zoom": 100,
+        "x": 50,
+        "y": 50
+      },
+      "material": "",
+      "tecnologia": "",
+      "acabamento": "Pintura manual",
+      "personalizacao": "",
+      "exemplo": true
+    },
+    {
+      "nome": "Action figures e colecionáveis",
+      "categoria": "Carlos",
+      "descricao": "Carlos",
+      "foto": "assets/images/carlos.png",
+      "descricao_foto": "Figura colecionável pintada à mão",
+      "ajuste": {
+        "modo": "preencher",
+        "zoom": 100,
+        "x": 50,
+        "y": 50
+      },
+      "material": "",
+      "tecnologia": "",
+      "acabamento": "Pintura manual",
+      "personalizacao": "",
+      "exemplo": true
+    },
+    {
+      "nome": "Esculturas personalizadas",
+      "categoria": "Personalizados",
+      "descricao": "Sua ideia transformada em escultura: do modelo à pintura, definida com você.",
+      "foto": "assets/images/produto-4.webp",
+      "descricao_foto": "Escultura personalizada pintada à mão",
+      "ajuste": {
+        "modo": "preencher",
+        "zoom": 100,
+        "x": 50,
+        "y": 50
+      },
+      "material": "",
+      "tecnologia": "",
+      "acabamento": "Pintura manual",
+      "personalizacao": "Cores e detalhes sob consulta",
+      "exemplo": true
+    },
+    {
+      "nome": "Presentes personalizados",
+      "categoria": "Presentes",
+      "descricao": "Uma peça pensada para alguém, com cores e detalhes que tornam o presente único.",
+      "foto": "assets/images/produto-5.webp",
+      "descricao_foto": "Presente personalizado impresso em 3D e pintado",
+      "ajuste": {
+        "modo": "preencher",
+        "zoom": 100,
+        "x": 50,
+        "y": 50
+      },
+      "material": "",
+      "tecnologia": "",
+      "acabamento": "Pintura manual",
+      "personalizacao": "Cores e detalhes sob consulta",
+      "exemplo": true
+    },
+    {
+      "nome": "Peças sob encomenda",
+      "categoria": "Sob encomenda",
+      "descricao": "Tem uma ideia, um personagem ou um arquivo 3D? Avaliamos o projeto e indicamos o melhor caminho.",
+      "foto": "assets/images/produto-6.webp",
+      "descricao_foto": "Peça produzida sob encomenda",
+      "ajuste": {
+        "modo": "preencher",
+        "zoom": 100,
+        "x": 50,
+        "y": 50
+      },
+      "material": "",
+      "tecnologia": "",
+      "acabamento": "",
+      "personalizacao": "Definida conforme o projeto",
+      "exemplo": true
+    }
+  ]
+}

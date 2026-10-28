@@ -1,0 +1,223 @@
+{
+  "marca": {
+    "nome": "ForgeLab",
+    "frase": "Impressão 3D em resina e filamento, finalizada à mão — de miniaturas a action figures.",
+    "logo": "assets/images/forgelab-icon.png",
+    "logo_ajuste": {
+      "modo": "inteira",
+      "zoom": 100,
+      "x": 50,
+      "y": 50
+    }
+  },
+  "whatsapp": {
+    "numero": "5511989980490",
+    "mensagem_geral": "Olá! Conheci o trabalho de vocês pelo site e gostaria de saber mais sobre os serviços de impressão 3D e pintura artesanal.",
+    "mensagem_produto": "Olá! Tenho interesse na peça {produto} e gostaria de solicitar um orçamento."
+  },
+  "inicio": {
+    "rotulo": "Impressão 3D · Action figures",
+    "titulo": "Da impressão à arte.",
+    "subtitulo": "Impressão 3D de alta qualidade com pintura artesanal e acabamento feito nos mínimos detalhes.",
+    "foto_sem_pintura": "assets/images/peca-sem-pintura.webp",
+    "foto_pintada": "assets/images/peca-pintada.webp",
+    "descricao_foto": "Miniatura de dragão impressa em resina cinza, ainda sem pintura, com as linhas de impressão aparentes.",
+    "ajuste": {
+      "modo": "inteira",
+      "zoom": 100,
+      "x": 50,
+      "y": 50
+    }
+  },
+  "produtos_secao": {
+    "titulo": "Peças que ganham vida.",
+    "texto": "Cada peça sai da impressora como uma escultura em estado bruto. A cor, a luz e a personalidade vêm depois — pelas mãos de quem pinta."
+  },
+  "processo": {
+    "titulo": "Como uma ideia vira peça pintada.",
+    "texto": "A tecnologia garante a forma. O acabamento manual garante a alma — cada peça é preparada e pintada à mão, uma a uma.",
+    "etapas": [
+      {
+        "titulo": "Escolha ou criação do modelo",
+        "texto": "Você apresenta sua ideia, escolhe um modelo disponível ou solicita uma peça personalizada.",
+        "foto": "assets/images/processo-1.webp",
+        "descricao_foto": "Escolha ou criação do modelo",
+        "ajuste": {
+          "modo": "preencher",
+          "zoom": 100,
+          "x": 50,
+          "y": 50
+        }
+      },
+      {
+        "titulo": "Impressão 3D",
+        "texto": "A peça é produzida com o material e a tecnologia adequados ao projeto.",
+        "foto": "assets/images/processo-2.webp",
+        "descricao_foto": "Peça sendo impressa em 3D",
+        "ajuste": {
+          "modo": "preencher",
+          "zoom": 100,
+          "x": 50,
+          "y": 50
+        }
+      },
+      {
+        "titulo": "Preparação e pintura manual",
+        "texto": "A peça passa pelo acabamento necessário e recebe pintura artesanal, camada por camada, com atenção aos detalhes.",
+        "foto": "assets/images/processo-3.webp",
+        "descricao_foto": "Preparação e pintura manual da peça",
+        "ajuste": {
+          "modo": "preencher",
+          "zoom": 100,
+          "x": 50,
+          "y": 50
+        }
+      },
+      {
+        "titulo": "Resultado final",
+        "texto": "Você recebe uma peça finalizada, personalizada e pronta para uso ou exposição.",
+        "foto": "assets/images/processo-4.webp",
+        "descricao_foto": "Peça finalizada e pintada à mão",
+        "ajuste": {
+          "modo": "preencher",
+          "zoom": 100,
+          "x": 50,
+          "y": 50
+        }
+      }
+    ],
+    "frase_final": "A pintura é feita à mão: por isso, cada peça tem pequenas variações que a tornam única."
+  },
+  "diferenciais": {
+    "titulo": "Fabricação digital,",
+    "destaque": "acabamento humano.",
+    "texto": "O diferencial não está só na impressora — está no encontro entre a precisão da tecnologia e o cuidado do trabalho artesanal.",
+    "itens": [
+      {
+        "icone": "brush",
+        "titulo": "Pintura feita à mão",
+        "texto": "Cada cor é aplicada manualmente, com pincel e paciência."
+      },
+      {
+        "icone": "loupe",
+        "titulo": "Atenção aos pequenos detalhes",
+        "texto": "Olhos, escamas, texturas e realces recebem cuidado individual."
+      },
+      {
+        "icone": "cube",
+        "titulo": "Impressão 3D personalizada",
+        "texto": "Peças produzidas sob medida para a sua ideia."
+      },
+      {
+        "icone": "layers",
+        "titulo": "Materiais e acabamentos",
+        "texto": "Diferentes materiais e possibilidades de acabamento para cada projeto."
+      },
+      {
+        "icone": "chat",
+        "titulo": "Atendimento direto",
+        "texto": "Você conversa com quem faz a peça, do início ao fim."
+      },
+      {
+        "icone": "palette",
+        "titulo": "Produção sob encomenda",
+        "texto": "Cores e detalhes definidos com você, quando disponível."
+      }
+    ]
+  },
+  "portfolio_secao": {
+    "titulo": "Do cinza ao detalhe.",
+    "texto": "Textura da impressão, preparação, pintura e resultado final. Toque em uma imagem para ampliar."
+  },
+  "avaliacoes": {
+    "titulo": "A experiência de quem já conhece nosso trabalho.",
+    "link_google": "",
+    "nota": null,
+    "quantidade": null,
+    "lista": []
+  },
+  "contato": {
+    "titulo": "Conte o que você quer criar.",
+    "texto": "Preencha o que souber — as informações viram uma mensagem pronta no WhatsApp. Não é preciso saber o material ou as medidas exatas.",
+    "aviso": "O valor e o prazo definitivos dependem da avaliação do projeto."
+  },
+  "instagram": {
+    "titulo": "Acompanhe a forja de perto.",
+    "perfil": "forgelab.art",
+    "link": "https://www.instagram.com/forgelab.art/",
+    "fotos": [
+      {
+        "foto": "assets/images/instagram-1.webp",
+        "descricao_foto": "Foto do Instagram da ForgeLab",
+        "ajuste": {
+          "modo": "preencher",
+          "zoom": 100,
+          "x": 50,
+          "y": 50
+        }
+      },
+      {
+        "foto": "assets/images/instagram-2.webp",
+        "descricao_foto": "Foto do Instagram da ForgeLab",
+        "ajuste": {
+          "modo": "preencher",
+          "zoom": 100,
+          "x": 50,
+          "y": 50
+        }
+      },
+      {
+        "foto": "assets/images/instagram-3.webp",
+        "descricao_foto": "Foto do Instagram da ForgeLab",
+        "ajuste": {
+          "modo": "preencher",
+          "zoom": 100,
+          "x": 50,
+          "y": 50
+        }
+      },
+      {
+        "foto": "assets/images/instagram-4.webp",
+        "descricao_foto": "Foto do Instagram da ForgeLab",
+        "ajuste": {
+          "modo": "preencher",
+          "zoom": 100,
+          "x": 50,
+          "y": 50
+        }
+      }
+    ]
+  },
+  "frete": {
+    "titulo": "Da forja até você.",
+    "texto": "Trabalhamos apenas com envio. Informe seu CEP para ver uma estimativa de frete — o valor final é confirmado no WhatsApp, conforme o tamanho e o peso da peça.",
+    "estado_origem": "",
+    "regioes": {
+      "mesmo_estado": {
+        "valor": null,
+        "prazo": ""
+      },
+      "sudeste": {
+        "valor": null,
+        "prazo": ""
+      },
+      "sul": {
+        "valor": null,
+        "prazo": ""
+      },
+      "centro_oeste": {
+        "valor": null,
+        "prazo": ""
+      },
+      "nordeste": {
+        "valor": null,
+        "prazo": ""
+      },
+      "norte": {
+        "valor": null,
+        "prazo": ""
+      }
+    },
+    "observacao": "Estimativa para uma peça de tamanho pequeno a médio. O valor final é confirmado conforme tamanho, peso e embalagem."
+  }
+}

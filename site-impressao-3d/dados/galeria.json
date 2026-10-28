@@ -1,0 +1,112 @@
+{
+  "fotos": [
+    {
+      "foto": "assets/images/galeria-1.webp",
+      "legenda": "Antes · textura da impressão",
+      "descricao_foto": "Peça recém-impressa, antes da pintura",
+      "tamanho": "grande",
+      "ajuste": {
+        "modo": "preencher",
+        "zoom": 100,
+        "x": 50,
+        "y": 50
+      }
+    },
+    {
+      "foto": "assets/images/galeria-2.webp",
+      "legenda": "Preparação",
+      "descricao_foto": "Peça durante a preparação",
+      "tamanho": "normal",
+      "ajuste": {
+        "modo": "preencher",
+        "zoom": 100,
+        "x": 50,
+        "y": 50
+      }
+    },
+    {
+      "foto": "assets/images/galeria-3.webp",
+      "legenda": "Detalhe da pintura",
+      "descricao_foto": "Detalhe da pintura manual",
+      "tamanho": "normal",
+      "ajuste": {
+        "modo": "preencher",
+        "zoom": 100,
+        "x": 50,
+        "y": 50
+      }
+    },
+    {
+      "foto": "assets/images/galeria-4.webp",
+      "legenda": "Pintura em andamento",
+      "descricao_foto": "Peça recebendo as primeiras camadas de tinta",
+      "tamanho": "vertical",
+      "ajuste": {
+        "modo": "preencher",
+        "zoom": 100,
+        "x": 50,
+        "y": 50
+      }
+    },
+    {
+      "foto": "assets/images/galeria-5.webp",
+      "legenda": "Pequenos detalhes",
+      "descricao_foto": "Close de acabamento",
+      "tamanho": "normal",
+      "ajuste": {
+        "modo": "preencher",
+        "zoom": 100,
+        "x": 50,
+        "y": 50
+      }
+    },
+    {
+      "foto": "assets/images/galeria-6.webp",
+      "legenda": "Depois · peça finalizada",
+      "descricao_foto": "Peça finalizada",
+      "tamanho": "grande",
+      "ajuste": {
+        "modo": "preencher",
+        "zoom": 100,
+        "x": 50,
+        "y": 50
+      }
+    },
+    {
+      "foto": "assets/images/galeria-7.webp",
+      "legenda": "Antes e depois",
+      "descricao_foto": "Comparação entre a peça sem pintura e pintada",
+      "tamanho": "normal",
+      "ajuste": {
+        "modo": "preencher",
+        "zoom": 100,
+        "x": 50,
+        "y": 50
+      }
+    },
+    {
+      "foto": "assets/images/galeria-8.webp",
+      "legenda": "Resultado final",
+      "descricao_foto": "Peça finalizada",
+      "tamanho": "normal",
+      "ajuste": {
+        "modo": "preencher",
+        "zoom": 100,
+        "x": 50,
+        "y": 50
+      }
+    },
+    {
+      "foto": "assets/images/galeria-9.webp",
+      "legenda": "Resultado final",
+      "descricao_foto": "Peça finalizada",
+      "tamanho": "normal",
+      "ajuste": {
+        "modo": "preencher",
+        "zoom": 100,
+        "x": 50,
+        "y": 50
+      }
+    }
+  ]
+}

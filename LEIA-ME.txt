@@ -1,0 +1,191 @@
+================================================================
+ PAINEL DE CONTEÚDO DA FORGELAB — GUIA DE CONFIGURAÇÃO (para o Gabriel)
+================================================================
+
+Site:    https://forgelab.vercel.app
+Painel:  https://forgelab.vercel.app/admin
+Repo:    https://github.com/GabrielHenriqueLopes/site-impressao-3d
+
+
+----------------------------------------------------------------
+1. O QUE FOI FEITO
+----------------------------------------------------------------
+
+O conteúdo editável saiu do código e foi para 3 arquivos de dados:
+
+  site-impressao-3d/dados/site.json      marca, WhatsApp, tela principal,
+                                         textos das seções, "Como funciona",
+                                         diferenciais, avaliações, Instagram,
+                                         frete
+  site-impressao-3d/dados/produtos.json  produtos do carrossel
+  site-impressao-3d/dados/galeria.json   fotos do portfólio
+
+O site (script.js) lê esses arquivos com fetch. Se a leitura falhar
+(ex.: index.html aberto direto do computador, com dois cliques), ele usa
+os valores do SITE_CONFIG que continuam no script.js — a "reserva".
+Atenção: a reserva NÃO é atualizada pelo painel. Ela só serve para o site
+nunca ficar vazio. A versão oficial do conteúdo é sempre a dos JSON.
+
+Arquivos novos:
+
+  site-impressao-3d/admin/index.html   carrega o Decap CMS (unpkg, 3.x)
+  site-impressao-3d/admin/config.yml   campos, rótulos e dicas do painel
+  site-impressao-3d/admin/preview.js   prévia: cada foto no formato do site
+  site-impressao-3d/admin/preview.css  organização da prévia
+  site-impressao-3d/api/auth.js        login com GitHub (passo 1)
+  site-impressao-3d/api/callback.js    login com GitHub (passo 2)
+  site-impressao-3d/dados/*.json       conteúdo
+
+Arquivos alterados: index.html (marcações data-text nos textos das seções),
+script.js (leitura dos dados + ajuste de foto) e style.css (bloco
+"AJUSTE DE FOTO" no final). O visual do site não mudou — foi comparado
+pixel a pixel com a versão anterior, no computador e no celular.
+
+Fotos enviadas pelo painel vão para site-impressao-3d/assets/images
+(a mesma pasta das fotos atuais, que aparecem na biblioteca do painel).
+
+"Ajuste da foto" (em cada campo de imagem): modo (mostrar inteira /
+preencher o quadro), zoom (50–300) e posição horizontal/vertical (0–100).
+O site aplica com object-fit, object-position e scale — o arquivo da foto
+não é alterado. Na tela principal, um único ajuste vale para as duas fotos
+(sem pintura e pintada), para o efeito de pintura não desalinhar.
+
+Ficaram SÓ no código (de propósito): showSetupNotices (modo montagem),
+os ajustes do pincel da tela principal, a integração de avaliações
+(proxyEndpoint) e o app /gestao.
+
+
+----------------------------------------------------------------
+2. COMO O LOGIN FUNCIONA (e por que é seguro)
+----------------------------------------------------------------
+
+/admin -> botão "Entrar com GitHub" -> abre /api/auth numa janela
+-> /api/auth cria um código aleatório ("state"), guarda num cookie
+   HttpOnly/Secure e manda para o GitHub
+-> a pessoa autoriza no GitHub -> GitHub volta para /api/callback
+-> /api/callback confere o "state" com o cookie, troca o código por um
+   token (usando o Client Secret, que só existe no servidor da Vercel) e
+   entrega o token ao painel com postMessage SOMENTE para a origem do
+   próprio site.
+
+Só consegue publicar quem tiver permissão de escrita no repositório.
+O token fica no navegador de quem fez login (como em qualquer painel).
+Testado localmente, com GitHub simulado: login normal, "state"
+adulterado (recusado), código inválido (erro claro) e página de outra
+origem tentando pegar o token (não recebe).
+
+Variáveis de ambiente necessárias na Vercel (Production):
+  OAUTH_GITHUB_CLIENT_ID
+  OAUTH_GITHUB_CLIENT_SECRET
+O Client Secret NUNCA vai para o código nem para o GitHub.
+
+
+----------------------------------------------------------------
+3. CONFIGURAÇÃO — PASSO A PASSO
+----------------------------------------------------------------
+
+A) Enviar os arquivos para o GitHub
+   No terminal, dentro de C:\Users\Gabgol\Desktop\site-impressao-3d:
+     git pull
+     git add .
+     git commit -m "Painel de conteúdo (Decap CMS) e dados em JSON"
+     git push
+
+B) Conferir a pasta raiz na Vercel
+   Vercel -> projeto forgelab -> Settings -> Build and Deployment
+   -> Root Directory deve ser:  site-impressao-3d
+   (é por isso que as funções ficam em site-impressao-3d/api).
+
+C) Criar o OAuth App no GitHub
+   GitHub -> foto do perfil -> Settings -> Developer settings
+   -> OAuth Apps -> New OAuth App
+     Application name:            Painel ForgeLab
+     Homepage URL:                https://forgelab.vercel.app
+     Authorization callback URL:  https://forgelab.vercel.app/api/callback
+     Enable Device Flow:          DESMARCADO
+   -> Register application
+   -> copie o Client ID
+   -> Generate a new client secret -> copie o segredo (ele só aparece
+      uma vez; se perder, gere outro e troque na Vercel)
+   Se a página do app mostrar a opção "Expire user access tokens",
+   deixe DESMARCADA.
+
+D) Criar as variáveis na Vercel
+   Vercel -> forgelab -> Settings -> Environment Variables
+     OAUTH_GITHUB_CLIENT_ID      = (Client ID)      ambiente: Production
+     OAUTH_GITHUB_CLIENT_SECRET  = (Client secret)  ambiente: Production
+   Depois: Deployments -> no deploy mais recente -> "..." -> Redeploy.
+   (Variáveis novas só valem depois de um novo deploy.)
+
+E) Testar
+   1. Abra https://forgelab.vercel.app/admin  (e também /admin/ )
+   2. "Entrar com GitHub" -> autorize -> o painel abre.
+   3. Teste de ponta a ponta: em "Informações do site" > Tela principal,
+      mude uma palavra do subtítulo -> Publicar -> Publicar agora.
+   4. No GitHub, aparece um commit "Painel: atualiza ...".
+   5. Em ~1 minuto a Vercel publica; abra o site com Ctrl+F5.
+   6. Desfaça a alteração pelo painel do mesmo jeito.
+   7. Teste uma foto: em um produto, envie uma foto, mexa no "Ajuste da
+      foto" olhando a prévia à direita, publique e confira no site.
+
+F) Dar acesso ao cliente
+   GitHub -> repositório -> Settings -> Collaborators -> Add people
+   -> usuário/e-mail do GitHub do cliente -> ele aceita o convite por
+   e-mail. (O cliente precisa de uma conta no GitHub; é grátis.)
+   Depois, entregue a ele o arquivo COMO-USAR-O-PAINEL.txt.
+
+
+----------------------------------------------------------------
+4. IMPORTANTE NO DIA A DIA
+----------------------------------------------------------------
+
+* O PAINEL GRAVA DIRETO NO GITHUB. Antes de editar qualquer coisa pelo
+  computador, rode SEMPRE:
+      git pull
+  Senão você vai trabalhar numa versão velha e dar conflito no push.
+
+* Cada publicação no painel = 1 commit no main = 1 deploy na Vercel
+  (~1 minuto até aparecer no site).
+
+* Se trocar o endereço do site (ex.: domínio próprio), atualize:
+  - admin/config.yml: base_url, site_url e display_url
+  - OAuth App no GitHub: Homepage URL e Authorization callback URL
+  O login só funciona no endereço configurado (não funciona nos links
+  de "preview" da Vercel — use sempre o de produção).
+
+* Testar o site no computador com os dados do painel: abra a pasta
+  site-impressao-3d num servidor local (ex.: no terminal, dentro dela:
+  python -m http.server 8000  ->  http://localhost:8000). Abrindo o
+  index.html com dois cliques, o site usa a reserva do script.js.
+
+* Antes de entregar ao cliente: mude showSetupNotices para false no
+  script.js (tira avisos, avaliações de exemplo e selos "Exemplo").
+
+
+----------------------------------------------------------------
+5. SE ALGO DER ERRADO
+----------------------------------------------------------------
+
+"Login ainda não configurado: falta a variável..."
+   -> variáveis não criadas no Production ou faltou o Redeploy.
+
+GitHub mostra "redirect_uri is not associated with this application"
+   -> o callback do OAuth App não é exatamente
+      https://forgelab.vercel.app/api/callback  (sem barra no final).
+
+Janela de login abre e fecha mas o painel não entra
+   -> está acessando o painel por outro endereço (ex.: link de preview).
+      Use https://forgelab.vercel.app/admin.
+
+/api/auth dá 404
+   -> o Root Directory da Vercel não é site-impressao-3d (passo B).
+
+Painel diz que não tem permissão para gravar
+   -> a conta que entrou não é colaboradora do repositório (passo F).
+
+Alteração publicada não aparece
+   -> espere o deploy terminar (Vercel -> Deployments) e use Ctrl+F5.
+
+Site ficou sem algum conteúdo depois de uma edição manual nos JSON
+   -> erro de digitação no JSON. O site cai na reserva do script.js e
+      avisa no console (F12). Corrija o JSON (vírgulas e aspas).

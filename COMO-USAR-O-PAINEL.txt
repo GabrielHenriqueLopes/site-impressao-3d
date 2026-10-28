@@ -1,0 +1,136 @@
+================================================================
+ COMO USAR O PAINEL DO SITE DA FORGELAB
+================================================================
+
+Com o painel você muda textos, produtos e fotos do site sozinha,
+sem mexer em código. Tudo pelo navegador (computador ou celular).
+
+Endereço do painel:   https://forgelab.vercel.app/admin
+
+
+----------------------------------------------------------------
+ANTES DA PRIMEIRA VEZ (só uma vez)
+----------------------------------------------------------------
+
+1. Crie uma conta grátis em https://github.com (se ainda não tiver).
+2. Passe o seu nome de usuário do GitHub para o Gabriel.
+3. Você vai receber um e-mail do GitHub com um convite.
+   Clique em "Accept invitation" (Aceitar convite).
+Pronto: a partir daí você já pode entrar no painel.
+
+
+----------------------------------------------------------------
+1. ENTRAR
+----------------------------------------------------------------
+
+1. Abra https://forgelab.vercel.app/admin
+2. Clique em "Entrar com GitHub".
+3. Abre uma janelinha do GitHub. Na primeira vez, clique em
+   "Authorize" (Autorizar). A janelinha fecha sozinha.
+4. O painel abre. No menu da esquerda aparecem 3 partes:
+     - Produtos ................ peças do carrossel
+     - Portfólio (galeria) ..... fotos da galeria
+     - Informações do site ..... textos, WhatsApp, tela principal,
+                                 Instagram, avaliações e frete
+
+Dica: se a janelinha não abrir, libere "janelas pop-up" para este
+site no navegador e tente de novo.
+
+
+----------------------------------------------------------------
+2. EDITAR UM TEXTO (ex.: descrição de um produto)
+----------------------------------------------------------------
+
+1. Clique em "Produtos" e depois em "Lista de produtos".
+2. Clique no produto que quer mudar para abrir os campos dele.
+3. Mude o que quiser: nome, descrição, material...
+   Os campos com "(opcional)" podem ficar em branco: aí eles
+   simplesmente não aparecem no site.
+4. Do lado direito aparece a PRÉVIA: é assim que vai ficar no site.
+
+Para criar um produto novo: no fim da lista, clique em
+"Adicionar produto".
+Para mudar a ordem: segure o produto pelos risquinhos e arraste.
+Para apagar: clique no "X" ao lado do produto.
+
+Os outros textos do site ficam em "Informações do site". Cada parte
+(Tela principal, Como funciona, Frete...) abre ao clicar no nome.
+
+
+----------------------------------------------------------------
+3. ENVIAR UMA FOTO
+----------------------------------------------------------------
+
+1. No campo "Foto", clique em "Escolher uma imagem".
+2. Clique em "Enviar" (ou "Upload") e escolha a foto no computador
+   ou no celular.
+3. Clique na foto enviada e depois em "Escolher selecionado".
+
+Dicas para a foto ficar boa e o site continuar rápido:
+  - Prefira fotos com até 1 MB (dá para diminuir em sites como
+    squoosh.app ou tinypng.com).
+  - Fotos bem iluminadas, com a peça no centro.
+  - Preencha "Descrição da foto" com uma frase do que aparece.
+    Isso ajuda quem usa leitor de tela e ajuda no Google.
+
+Fotos da TELA PRINCIPAL (a peça que o visitante "pinta" com o mouse):
+  são DUAS fotos da MESMA peça — uma sem pintura e outra pintada —
+  tiradas do MESMO jeito: mesma posição da câmera, mesma distância,
+  mesmo tamanho. Use um tripé e não mexa a peça entre as duas fotos.
+
+
+----------------------------------------------------------------
+4. AJUSTAR A FOTO (sem mexer no arquivo)
+----------------------------------------------------------------
+
+Embaixo de cada foto existe "Ajuste da foto". Clique para abrir.
+Olhe a PRÉVIA do lado direito enquanto muda:
+
+  Como encaixar a foto no quadro
+     - Preencher o quadro: a foto ocupa todo o espaço
+       (pode cortar um pouco das bordas).
+     - Mostrar a foto inteira: aparece a foto toda
+       (pode sobrar espaço nas laterais).
+
+  Zoom (%)
+     100 = normal. Mais que 100 aproxima. Menos que 100 afasta.
+
+  Posição horizontal
+     0 = mostra mais o lado esquerdo · 50 = meio · 100 = direito
+
+  Posição vertical
+     0 = mostra mais a parte de cima · 50 = meio · 100 = de baixo
+
+Exemplo: a cabeça da peça está cortada em cima?
+  Diminua a "Posição vertical" (ex.: 20) até ela aparecer inteira.
+
+A foto original não é alterada: dá para voltar ao normal a qualquer
+momento (Zoom 100, posições 50 e 50).
+
+
+----------------------------------------------------------------
+5. PUBLICAR
+----------------------------------------------------------------
+
+1. Quando terminar, clique em "Publicar" (no alto da tela).
+2. Clique em "Publicar agora".
+3. Espere mais ou menos 1 minuto e abra o site.
+   Se ainda aparecer a versão antiga, aperte Ctrl+F5 no computador
+   (ou feche e abra a página no celular).
+
+Mudou de ideia antes de publicar? Basta sair sem publicar.
+Já publicou e quer voltar? Edite de novo e publique outra vez.
+(O Gabriel também consegue recuperar qualquer versão antiga.)
+
+
+----------------------------------------------------------------
+CUIDADOS
+----------------------------------------------------------------
+
+- Avaliações do Google: copie apenas avaliações REAIS. Nunca invente.
+- Número do WhatsApp: só números, começando com 55 e o DDD.
+  Ex.: 5511999999999
+- Na mensagem de orçamento do produto, mantenha a palavra {produto}
+  (com as chaves): é ali que o site coloca o nome da peça.
+- Se aparecer algum erro ou algo sumir do site, não se preocupe:
+  nada se perde. Avise o Gabriel.

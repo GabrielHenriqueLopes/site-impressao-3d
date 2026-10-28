@@ -1,0 +1,929 @@
+# =================================================================
+# Painel de conteúdo da ForgeLab (Decap CMS)
+# -----------------------------------------------------------------
+# Este arquivo diz ao painel QUAIS campos o cliente pode editar e
+# ONDE eles ficam salvos (pasta site-impressao-3d/dados no repositório).
+#
+# - backend: o painel salva direto no GitHub (repositório abaixo).
+#   O login usa as funções api/auth e api/callback deste site.
+# - media_folder: onde as fotos enviadas pelo painel são gravadas.
+# - Os rótulos ("label") e as dicas ("hint") são o que o cliente vê.
+#
+# Se o endereço do site mudar (ex.: domínio próprio), troque
+# base_url, site_url e display_url — e também a Homepage e o
+# Callback URL do OAuth App no GitHub.
+# =================================================================
+
+backend:
+  name: github
+  repo: GabrielHenriqueLopes/site-impressao-3d
+  branch: main
+  base_url: "https://forgelab.vercel.app"
+  auth_endpoint: api/auth
+  commit_messages:
+    create: "Painel: cria {{collection}} “{{slug}}”"
+    update: "Painel: atualiza {{collection}} “{{slug}}”"
+    delete: "Painel: apaga {{collection}} “{{slug}}”"
+    uploadMedia: "Painel: envia a foto “{{path}}”"
+    deleteMedia: "Painel: apaga a foto “{{path}}”"
+locale: pt
+site_url: "https://forgelab.vercel.app"
+display_url: "https://forgelab.vercel.app"
+logo_url: /assets/images/forgelab-icon.png
+media_folder: site-impressao-3d/assets/images
+public_folder: assets/images
+slug:
+  encoding: ascii
+  clean_accents: true
+  sanitize_replacement: '-'
+collections:
+- name: produtos
+  label: Produtos
+  description: "As peças que aparecem no carrossel \"Peças que ganham vida\". Arraste para mudar a ordem."
+  editor:
+    preview: true
+  files:
+  - name: produtos
+    label: Lista de produtos
+    file: site-impressao-3d/dados/produtos.json
+    fields:
+    - label: Produtos
+      name: produtos
+      widget: list
+      label_singular: produto
+      summary: "{{fields.nome}}"
+      collapsed: true
+      hint: "A ordem aqui é a ordem no site. Clique em \"Adicionar produto\" para criar um novo."
+      fields:
+      - label: Nome do produto
+        name: nome
+        widget: string
+        required: true
+        hint: Aparece em destaque no card e na mensagem do WhatsApp.
+      - label: Categoria (opcional)
+        name: categoria
+        widget: string
+        required: false
+        hint: "Etiqueta pequena sobre a foto. Ex.: Miniaturas"
+      - label: Descrição curta
+        name: descricao
+        widget: text
+        required: false
+        hint: Duas ou três linhas sobre a peça.
+      - label: Foto
+        name: foto
+        widget: image
+        required: false
+        choose_url: false
+        hint: "Clique em \"Escolher uma imagem\" para enviar uma foto do computador (JPG, PNG ou WEBP, de preferência até\
+          \ 1 MB)."
+      - label: Descrição da foto (opcional)
+        name: descricao_foto
+        widget: string
+        required: false
+        hint: Uma frase dizendo o que aparece na foto. Ajuda quem usa leitor de tela e o Google. Não aparece no site.
+      - label: Ajuste da foto
+        name: ajuste
+        widget: object
+        collapsed: true
+        summary: "{{fields.modo}} · zoom {{fields.zoom}}% · posição {{fields.x}}/{{fields.y}}"
+        hint: Muda só o jeito que a foto aparece no site. O arquivo da foto não é alterado.
+        fields:
+        - label: Como encaixar a foto no quadro
+          name: modo
+          widget: select
+          default: preencher
+          options:
+          - label: Preencher o quadro (pode cortar um pouco das bordas)
+            value: preencher
+          - label: Mostrar a foto inteira (pode sobrar espaço nas laterais)
+            value: inteira
+        - label: "Zoom (%)"
+          name: zoom
+          widget: number
+          value_type: int
+          min: 50
+          max: 300
+          step: 5
+          default: 100
+          hint: "100 = tamanho normal. Acima de 100 aproxima a foto; abaixo de 100 afasta. Vai de 50 a 300."
+        - label: Posição horizontal
+          name: x
+          widget: number
+          value_type: int
+          min: 0
+          max: 100
+          step: 5
+          default: 50
+          hint: "0 = mostra mais o lado esquerdo · 50 = centro · 100 = mostra mais o lado direito."
+        - label: Posição vertical
+          name: y
+          widget: number
+          value_type: int
+          min: 0
+          max: 100
+          step: 5
+          default: 50
+          hint: "0 = mostra mais a parte de cima · 50 = centro · 100 = mostra mais a parte de baixo."
+      - label: Material (opcional)
+        name: material
+        widget: string
+        required: false
+        hint: "Ex.: Resina UV, Filamento PLA, Filamento PETG. Em branco = não aparece."
+      - label: Tecnologia de impressão (opcional)
+        name: tecnologia
+        widget: string
+        required: false
+        hint: "Ex.: FDM, SLA, MSLA. Em branco = não aparece."
+      - label: Acabamento (opcional)
+        name: acabamento
+        widget: string
+        required: false
+        hint: "Ex.: Pintura manual. Em branco = não aparece."
+      - label: Personalização (opcional)
+        name: personalizacao
+        widget: string
+        required: false
+        hint: "Ex.: Cores e detalhes sob consulta. Em branco = não aparece."
+      - label: "Mostrar o selo \"Exemplo\" na foto"
+        name: exemplo
+        widget: boolean
+        default: false
+        required: false
+        hint: Ligue só para peças de demonstração. O selo aparece apenas enquanto o site está em modo de montagem.
+- name: portfolio
+  label: Portfólio (galeria)
+  description: "As fotos da seção \"Do cinza ao detalhe\". Clicando nelas, o visitante vê a foto ampliada."
+  editor:
+    preview: true
+  files:
+  - name: galeria
+    label: Fotos do portfólio
+    file: site-impressao-3d/dados/galeria.json
+    fields:
+    - label: Fotos
+      name: fotos
+      widget: list
+      label_singular: foto
+      summary: "{{fields.legenda}}"
+      collapsed: true
+      hint: A ordem aqui é a ordem no mosaico. Arraste para reorganizar.
+      fields:
+      - label: Foto
+        name: foto
+        widget: image
+        required: true
+        choose_url: false
+        hint: "Clique em \"Escolher uma imagem\" para enviar uma foto do computador (JPG, PNG ou WEBP, de preferência até\
+          \ 1 MB)."
+      - label: Legenda (opcional)
+        name: legenda
+        widget: string
+        required: false
+        hint: "Texto curto no canto da foto. Ex.: Antes · textura da impressão"
+      - label: Descrição da foto (opcional)
+        name: descricao_foto
+        widget: string
+        required: false
+        hint: Uma frase dizendo o que aparece na foto. Ajuda quem usa leitor de tela e o Google. Não aparece no site.
+      - label: Tamanho no mosaico
+        name: tamanho
+        widget: select
+        default: normal
+        options:
+        - label: Normal (quadrado)
+          value: normal
+        - label: Grande (ocupa o espaço de 4 fotos no computador)
+          value: grande
+        - label: Vertical (ocupa 2 linhas no computador)
+          value: vertical
+      - label: Ajuste da foto
+        name: ajuste
+        widget: object
+        collapsed: true
+        summary: "{{fields.modo}} · zoom {{fields.zoom}}% · posição {{fields.x}}/{{fields.y}}"
+        hint: Muda só o jeito que a foto aparece no site. O arquivo da foto não é alterado.
+        fields:
+        - label: Como encaixar a foto no quadro
+          name: modo
+          widget: select
+          default: preencher
+          options:
+          - label: Preencher o quadro (pode cortar um pouco das bordas)
+            value: preencher
+          - label: Mostrar a foto inteira (pode sobrar espaço nas laterais)
+            value: inteira
+        - label: "Zoom (%)"
+          name: zoom
+          widget: number
+          value_type: int
+          min: 50
+          max: 300
+          step: 5
+          default: 100
+          hint: "100 = tamanho normal. Acima de 100 aproxima a foto; abaixo de 100 afasta. Vai de 50 a 300."
+        - label: Posição horizontal
+          name: x
+          widget: number
+          value_type: int
+          min: 0
+          max: 100
+          step: 5
+          default: 50
+          hint: "0 = mostra mais o lado esquerdo · 50 = centro · 100 = mostra mais o lado direito."
+        - label: Posição vertical
+          name: y
+          widget: number
+          value_type: int
+          min: 0
+          max: 100
+          step: 5
+          default: 50
+          hint: "0 = mostra mais a parte de cima · 50 = centro · 100 = mostra mais a parte de baixo."
+- name: site
+  label: Informações do site
+  description: "Textos, contatos, tela principal, Instagram, avaliações e frete."
+  editor:
+    preview: true
+  files:
+  - name: site
+    label: Conteúdo do site
+    file: site-impressao-3d/dados/site.json
+    fields:
+    - label: Marca
+      name: marca
+      widget: object
+      collapsed: true
+      fields:
+      - label: Nome da empresa
+        name: nome
+        widget: string
+        required: true
+        hint: Aparece no rodapé e no título da aba do navegador.
+      - label: Frase do rodapé
+        name: frase
+        widget: text
+        required: false
+      - label: Símbolo do logo
+        name: logo
+        widget: image
+        required: false
+        choose_url: false
+        hint: Aparece pequeno no topo e no rodapé. De preferência PNG com fundo transparente.
+      - label: Ajuste do logo
+        name: logo_ajuste
+        widget: object
+        collapsed: true
+        summary: "{{fields.modo}} · zoom {{fields.zoom}}% · posição {{fields.x}}/{{fields.y}}"
+        hint: Muda só o jeito que a foto aparece no site. O arquivo da foto não é alterado.
+        fields:
+        - label: Como encaixar a foto no quadro
+          name: modo
+          widget: select
+          default: inteira
+          options:
+          - label: Preencher o quadro (pode cortar um pouco das bordas)
+            value: preencher
+          - label: Mostrar a foto inteira (pode sobrar espaço nas laterais)
+            value: inteira
+        - label: "Zoom (%)"
+          name: zoom
+          widget: number
+          value_type: int
+          min: 50
+          max: 300
+          step: 5
+          default: 100
+          hint: "100 = tamanho normal. Acima de 100 aproxima a foto; abaixo de 100 afasta. Vai de 50 a 300."
+        - label: Posição horizontal
+          name: x
+          widget: number
+          value_type: int
+          min: 0
+          max: 100
+          step: 5
+          default: 50
+          hint: "0 = mostra mais o lado esquerdo · 50 = centro · 100 = mostra mais o lado direito."
+        - label: Posição vertical
+          name: y
+          widget: number
+          value_type: int
+          min: 0
+          max: 100
+          step: 5
+          default: 50
+          hint: "0 = mostra mais a parte de cima · 50 = centro · 100 = mostra mais a parte de baixo."
+    - label: WhatsApp
+      name: whatsapp
+      widget: object
+      collapsed: true
+      fields:
+      - label: Número do WhatsApp
+        name: numero
+        widget: string
+        pattern:
+        - "^55\\d{10,11}$"
+        - "Use só números: 55 + DDD + número. Ex.: 5511999999999"
+        hint: "Só números, começando com 55 e o DDD. Ex.: 5511999999999"
+      - label: Mensagem dos botões de contato
+        name: mensagem_geral
+        widget: text
+        required: true
+        hint: "Texto que já vem escrito quando o visitante clica em \"Solicitar orçamento\"."
+      - label: Mensagem do orçamento de um produto
+        name: mensagem_produto
+        widget: text
+        required: true
+        hint: "Escreva {produto} onde deve entrar o nome da peça."
+    - label: Tela principal (topo do site)
+      name: inicio
+      widget: object
+      collapsed: true
+      fields:
+      - label: Rótulo pequeno acima do título
+        name: rotulo
+        widget: string
+        required: true
+        hint: "Ex.: Impressão 3D · Action figures"
+      - label: Título principal
+        name: titulo
+        widget: string
+        required: true
+      - label: Texto abaixo do título
+        name: subtitulo
+        widget: text
+        required: true
+      - label: Peça SEM pintura
+        name: foto_sem_pintura
+        widget: image
+        required: true
+        choose_url: false
+        hint: "Foto da peça cinza/bruta. Precisa ter o MESMO enquadramento, tamanho e posição da foto pintada."
+      - label: A MESMA peça pintada
+        name: foto_pintada
+        widget: image
+        required: true
+        choose_url: false
+        hint: "Mesma foto, mesmo ângulo, mesmo tamanho em pixels — só que pintada. É isso que aparece ao passar o mouse."
+      - label: Descrição da peça (opcional)
+        name: descricao_foto
+        widget: string
+        required: false
+        hint: Uma frase dizendo o que aparece na foto. Ajuda quem usa leitor de tela e o Google. Não aparece no site.
+      - label: Ajuste das DUAS fotos (vale para as duas ao mesmo tempo)
+        name: ajuste
+        widget: object
+        collapsed: true
+        summary: "{{fields.modo}} · zoom {{fields.zoom}}% · posição {{fields.x}}/{{fields.y}}"
+        hint: "O mesmo ajuste é usado nas duas fotos, para o efeito de pintura continuar alinhado."
+        fields:
+        - label: Como encaixar a foto no quadro
+          name: modo
+          widget: select
+          default: inteira
+          options:
+          - label: Preencher o quadro (pode cortar um pouco das bordas)
+            value: preencher
+          - label: Mostrar a foto inteira (pode sobrar espaço nas laterais)
+            value: inteira
+        - label: "Zoom (%)"
+          name: zoom
+          widget: number
+          value_type: int
+          min: 50
+          max: 300
+          step: 5
+          default: 100
+          hint: "100 = tamanho normal. Acima de 100 aproxima a foto; abaixo de 100 afasta. Vai de 50 a 300."
+        - label: Posição horizontal
+          name: x
+          widget: number
+          value_type: int
+          min: 0
+          max: 100
+          step: 5
+          default: 50
+          hint: "0 = mostra mais o lado esquerdo · 50 = centro · 100 = mostra mais o lado direito."
+        - label: Posição vertical
+          name: y
+          widget: number
+          value_type: int
+          min: 0
+          max: 100
+          step: 5
+          default: 50
+          hint: "0 = mostra mais a parte de cima · 50 = centro · 100 = mostra mais a parte de baixo."
+    - label: Produtos — textos da seção
+      name: produtos_secao
+      widget: object
+      collapsed: true
+      fields:
+      - label: Título da seção
+        name: titulo
+        widget: string
+        required: true
+      - label: Texto ao lado do título
+        name: texto
+        widget: text
+        required: true
+      hint: "Os produtos em si ficam em \"Produtos\", no menu à esquerda."
+    - label: Como funciona
+      name: processo
+      widget: object
+      collapsed: true
+      fields:
+      - label: Título da seção
+        name: titulo
+        widget: string
+        required: true
+      - label: Texto abaixo do título
+        name: texto
+        widget: text
+        required: true
+      - label: Etapas
+        name: etapas
+        widget: list
+        label_singular: etapa
+        summary: "{{fields.titulo}}"
+        collapsed: true
+        min: 1
+        max: 6
+        hint: "O número de cada etapa (01, 02...) é colocado sozinho."
+        fields:
+        - label: Título da etapa
+          name: titulo
+          widget: string
+          required: true
+        - label: Explicação
+          name: texto
+          widget: text
+          required: true
+        - label: Foto
+          name: foto
+          widget: image
+          required: false
+          choose_url: false
+          hint: "Clique em \"Escolher uma imagem\" para enviar uma foto do computador (JPG, PNG ou WEBP, de preferência até\
+            \ 1 MB)."
+        - label: Descrição da foto (opcional)
+          name: descricao_foto
+          widget: string
+          required: false
+          hint: Uma frase dizendo o que aparece na foto. Ajuda quem usa leitor de tela e o Google. Não aparece no site.
+        - label: Ajuste da foto
+          name: ajuste
+          widget: object
+          collapsed: true
+          summary: "{{fields.modo}} · zoom {{fields.zoom}}% · posição {{fields.x}}/{{fields.y}}"
+          hint: Muda só o jeito que a foto aparece no site. O arquivo da foto não é alterado.
+          fields:
+          - label: Como encaixar a foto no quadro
+            name: modo
+            widget: select
+            default: preencher
+            options:
+            - label: Preencher o quadro (pode cortar um pouco das bordas)
+              value: preencher
+            - label: Mostrar a foto inteira (pode sobrar espaço nas laterais)
+              value: inteira
+          - label: "Zoom (%)"
+            name: zoom
+            widget: number
+            value_type: int
+            min: 50
+            max: 300
+            step: 5
+            default: 100
+            hint: "100 = tamanho normal. Acima de 100 aproxima a foto; abaixo de 100 afasta. Vai de 50 a 300."
+          - label: Posição horizontal
+            name: x
+            widget: number
+            value_type: int
+            min: 0
+            max: 100
+            step: 5
+            default: 50
+            hint: "0 = mostra mais o lado esquerdo · 50 = centro · 100 = mostra mais o lado direito."
+          - label: Posição vertical
+            name: y
+            widget: number
+            value_type: int
+            min: 0
+            max: 100
+            step: 5
+            default: 50
+            hint: "0 = mostra mais a parte de cima · 50 = centro · 100 = mostra mais a parte de baixo."
+      - label: Frase abaixo das etapas
+        name: frase_final
+        widget: text
+        required: false
+    - label: Diferenciais
+      name: diferenciais
+      widget: object
+      collapsed: true
+      fields:
+      - label: Título (primeira parte)
+        name: titulo
+        widget: string
+        required: true
+        hint: "Ex.: Fabricação digital,"
+      - label: Título (parte em roxo)
+        name: destaque
+        widget: string
+        required: true
+        hint: "Ex.: acabamento humano."
+      - label: Texto abaixo do título
+        name: texto
+        widget: text
+        required: true
+      - label: Itens
+        name: itens
+        widget: list
+        label_singular: item
+        summary: "{{fields.titulo}}"
+        collapsed: true
+        fields:
+        - label: Ícone
+          name: icone
+          widget: select
+          default: cube
+          options:
+          - label: Pincel
+            value: brush
+          - label: Lupa
+            value: loupe
+          - label: Cubo (impressão 3D)
+            value: cube
+          - label: Camadas
+            value: layers
+          - label: Balão de conversa
+            value: chat
+          - label: Paleta de tintas
+            value: palette
+          - label: Mão
+            value: hand
+          - label: Estrela
+            value: star
+          - label: Olho
+            value: eye
+        - label: Título do item
+          name: titulo
+          widget: string
+          required: true
+        - label: Texto do item
+          name: texto
+          widget: text
+          required: true
+    - label: Portfólio — textos da seção
+      name: portfolio_secao
+      widget: object
+      collapsed: true
+      fields:
+      - label: Título da seção
+        name: titulo
+        widget: string
+        required: true
+      - label: Texto ao lado do título
+        name: texto
+        widget: text
+        required: true
+      hint: "As fotos ficam em \"Portfólio (galeria)\", no menu à esquerda."
+    - label: Avaliações do Google
+      name: avaliacoes
+      widget: object
+      collapsed: true
+      fields:
+      - label: Título da seção
+        name: titulo
+        widget: string
+        required: true
+      - label: Link das avaliações no Google (opcional)
+        name: link_google
+        widget: string
+        required: false
+        pattern:
+        - "^https://"
+        - "O link precisa começar com https://"
+        hint: "Abra a empresa no Google Maps, clique em Compartilhar e cole o link aqui."
+      - label: Nota média (opcional)
+        name: nota
+        widget: number
+        value_type: float
+        min: 1
+        max: 5
+        step: 0.1
+        required: false
+        hint: "Ex.: 4.9 — copie do Google."
+      - label: Quantidade de avaliações (opcional)
+        name: quantidade
+        widget: number
+        value_type: int
+        min: 0
+        required: false
+      - label: Avaliações
+        name: lista
+        widget: list
+        label_singular: avaliação
+        summary: "{{fields.nome}}"
+        collapsed: true
+        required: false
+        hint: Copie apenas avaliações REAIS publicadas no Google. Nunca invente avaliações.
+        fields:
+        - label: Nome de quem avaliou
+          name: nome
+          widget: string
+          required: true
+        - label: Nota (1 a 5)
+          name: nota
+          widget: number
+          value_type: int
+          min: 1
+          max: 5
+          default: 5
+        - label: Comentário
+          name: texto
+          widget: text
+          required: true
+        - label: Data (opcional)
+          name: data
+          widget: string
+          required: false
+          hint: "Ex.: março de 2026"
+    - label: Contato (formulário de orçamento)
+      name: contato
+      widget: object
+      collapsed: true
+      fields:
+      - label: Título da seção
+        name: titulo
+        widget: string
+        required: true
+      - label: Texto abaixo do título
+        name: texto
+        widget: text
+        required: true
+      - label: Aviso sobre o orçamento
+        name: aviso
+        widget: text
+        required: false
+    - label: Instagram
+      name: instagram
+      widget: object
+      collapsed: true
+      fields:
+      - label: Título da seção
+        name: titulo
+        widget: string
+        required: true
+      - label: "Nome do perfil (sem o @)"
+        name: perfil
+        widget: string
+        required: false
+        hint: "Ex.: forgelab.art"
+      - label: Link do perfil (opcional)
+        name: link
+        widget: string
+        required: false
+        pattern:
+        - "^https://"
+        - "O link precisa começar com https://"
+        hint: "Ex.: https://www.instagram.com/forgelab.art/"
+      - label: Fotos ao lado do convite
+        name: fotos
+        widget: list
+        label_singular: foto
+        summary: "{{fields.descricao_foto}}"
+        collapsed: true
+        required: false
+        hint: Até 4 fotos ficam bem.
+        fields:
+        - label: Foto
+          name: foto
+          widget: image
+          required: false
+          choose_url: false
+          hint: "Clique em \"Escolher uma imagem\" para enviar uma foto do computador (JPG, PNG ou WEBP, de preferência até\
+            \ 1 MB)."
+        - label: Descrição da foto (opcional)
+          name: descricao_foto
+          widget: string
+          required: false
+          hint: Uma frase dizendo o que aparece na foto. Ajuda quem usa leitor de tela e o Google. Não aparece no site.
+        - label: Ajuste da foto
+          name: ajuste
+          widget: object
+          collapsed: true
+          summary: "{{fields.modo}} · zoom {{fields.zoom}}% · posição {{fields.x}}/{{fields.y}}"
+          hint: Muda só o jeito que a foto aparece no site. O arquivo da foto não é alterado.
+          fields:
+          - label: Como encaixar a foto no quadro
+            name: modo
+            widget: select
+            default: preencher
+            options:
+            - label: Preencher o quadro (pode cortar um pouco das bordas)
+              value: preencher
+            - label: Mostrar a foto inteira (pode sobrar espaço nas laterais)
+              value: inteira
+          - label: "Zoom (%)"
+            name: zoom
+            widget: number
+            value_type: int
+            min: 50
+            max: 300
+            step: 5
+            default: 100
+            hint: "100 = tamanho normal. Acima de 100 aproxima a foto; abaixo de 100 afasta. Vai de 50 a 300."
+          - label: Posição horizontal
+            name: x
+            widget: number
+            value_type: int
+            min: 0
+            max: 100
+            step: 5
+            default: 50
+            hint: "0 = mostra mais o lado esquerdo · 50 = centro · 100 = mostra mais o lado direito."
+          - label: Posição vertical
+            name: y
+            widget: number
+            value_type: int
+            min: 0
+            max: 100
+            step: 5
+            default: 50
+            hint: "0 = mostra mais a parte de cima · 50 = centro · 100 = mostra mais a parte de baixo."
+    - label: Frete
+      name: frete
+      widget: object
+      collapsed: true
+      fields:
+      - label: Título da seção
+        name: titulo
+        widget: string
+        required: true
+      - label: Texto abaixo do título
+        name: texto
+        widget: text
+        required: true
+      - label: Estado de onde as peças são enviadas
+        name: estado_origem
+        widget: select
+        required: false
+        options:
+        - AC
+        - AL
+        - AP
+        - AM
+        - BA
+        - CE
+        - DF
+        - ES
+        - GO
+        - MA
+        - MT
+        - MS
+        - MG
+        - PA
+        - PB
+        - PR
+        - PE
+        - PI
+        - RJ
+        - RN
+        - RS
+        - RO
+        - RR
+        - SC
+        - SP
+        - SE
+        - TO
+        hint: "Usado para a faixa \"mesmo estado\". Em branco = todos os estados usam a região."
+      - label: Valores por região
+        name: regioes
+        widget: object
+        collapsed: true
+        fields:
+        - label: Mesmo estado
+          name: mesmo_estado
+          widget: object
+          collapsed: true
+          summary: "R$ {{fields.valor}} · {{fields.prazo}}"
+          fields:
+          - label: Valor do frete (R$)
+            name: valor
+            widget: number
+            value_type: float
+            min: 0
+            step: 0.01
+            required: false
+            hint: "Use ponto ou vírgula para os centavos (ex.: 24.90). Em branco = aparece \"Sob consulta\". 0 = aparece \"\
+              Grátis\"."
+          - label: Prazo (opcional)
+            name: prazo
+            widget: string
+            required: false
+            hint: "Ex.: 3 a 5 dias úteis"
+        - label: Sudeste
+          name: sudeste
+          widget: object
+          collapsed: true
+          summary: "R$ {{fields.valor}} · {{fields.prazo}}"
+          fields:
+          - label: Valor do frete (R$)
+            name: valor
+            widget: number
+            value_type: float
+            min: 0
+            step: 0.01
+            required: false
+            hint: "Use ponto ou vírgula para os centavos (ex.: 24.90). Em branco = aparece \"Sob consulta\". 0 = aparece \"\
+              Grátis\"."
+          - label: Prazo (opcional)
+            name: prazo
+            widget: string
+            required: false
+            hint: "Ex.: 3 a 5 dias úteis"
+        - label: Sul
+          name: sul
+          widget: object
+          collapsed: true
+          summary: "R$ {{fields.valor}} · {{fields.prazo}}"
+          fields:
+          - label: Valor do frete (R$)
+            name: valor
+            widget: number
+            value_type: float
+            min: 0
+            step: 0.01
+            required: false
+            hint: "Use ponto ou vírgula para os centavos (ex.: 24.90). Em branco = aparece \"Sob consulta\". 0 = aparece \"\
+              Grátis\"."
+          - label: Prazo (opcional)
+            name: prazo
+            widget: string
+            required: false
+            hint: "Ex.: 3 a 5 dias úteis"
+        - label: Centro-Oeste
+          name: centro_oeste
+          widget: object
+          collapsed: true
+          summary: "R$ {{fields.valor}} · {{fields.prazo}}"
+          fields:
+          - label: Valor do frete (R$)
+            name: valor
+            widget: number
+            value_type: float
+            min: 0
+            step: 0.01
+            required: false
+            hint: "Use ponto ou vírgula para os centavos (ex.: 24.90). Em branco = aparece \"Sob consulta\". 0 = aparece \"\
+              Grátis\"."
+          - label: Prazo (opcional)
+            name: prazo
+            widget: string
+            required: false
+            hint: "Ex.: 3 a 5 dias úteis"
+        - label: Nordeste
+          name: nordeste
+          widget: object
+          collapsed: true
+          summary: "R$ {{fields.valor}} · {{fields.prazo}}"
+          fields:
+          - label: Valor do frete (R$)
+            name: valor
+            widget: number
+            value_type: float
+            min: 0
+            step: 0.01
+            required: false
+            hint: "Use ponto ou vírgula para os centavos (ex.: 24.90). Em branco = aparece \"Sob consulta\". 0 = aparece \"\
+              Grátis\"."
+          - label: Prazo (opcional)
+            name: prazo
+            widget: string
+            required: false
+            hint: "Ex.: 3 a 5 dias úteis"
+        - label: Norte
+          name: norte
+          widget: object
+          collapsed: true
+          summary: "R$ {{fields.valor}} · {{fields.prazo}}"
+          fields:
+          - label: Valor do frete (R$)
+            name: valor
+            widget: number
+            value_type: float
+            min: 0
+            step: 0.01
+            required: false
+            hint: "Use ponto ou vírgula para os centavos (ex.: 24.90). Em branco = aparece \"Sob consulta\". 0 = aparece \"\
+              Grátis\"."
+          - label: Prazo (opcional)
+            name: prazo
+            widget: string
+            required: false
+            hint: "Ex.: 3 a 5 dias úteis"
+      - label: Observação abaixo do valor
+        name: observacao
+        widget: text
+        required: false

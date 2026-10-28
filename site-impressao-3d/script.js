@@ -1,7 +1,9 @@
 /* =================================================================
    ForgeLab — script principal
    -----------------------------------------------------------------
-   1. CONFIGURAÇÃO  ← edite aqui as informações do estabelecimento
+   1. CONFIGURAÇÃO  ← valores de RESERVA (o conteúdo oficial fica em dados/*.json
+      e é editado pelo painel em /admin)
+   1b. Carregamento dos dados do painel (dados/*.json)
    2. Utilidades
    3. Textos, marca e links de WhatsApp
    4. Cabeçalho e menu
@@ -15,9 +17,12 @@
    ================================================================= */
 
 /* =================================================================
-   1. CONFIGURAÇÃO
-   Tudo o que é informação do negócio fica aqui. Campos vazios ('')
-   ou null NÃO aparecem no site — nada é inventado.
+   1. CONFIGURAÇÃO (RESERVA)
+   O conteúdo do site agora é editado pelo painel (/admin) e fica nos
+   arquivos dados/site.json, dados/produtos.json e dados/galeria.json.
+   Os valores abaixo são usados só quando esses arquivos não podem ser
+   lidos (ex.: abrindo o index.html direto do computador).
+   Campos vazios ('') ou null NÃO aparecem no site — nada é inventado.
    ================================================================= */
 const SITE_CONFIG = {
   /* true  → mostra avisos discretos "a configurar" e exemplos de avaliações
@@ -283,6 +288,299 @@ const DEMO_REVIEWS = [
 ];
 
 /* =================================================================
+   1b. CARREGAMENTO DOS DADOS DO PAINEL
+   -----------------------------------------------------------------
+   O painel (/admin) grava o conteúdo nestes arquivos. O site lê os
+   três com fetch e substitui os valores de reserva do SITE_CONFIG.
+   Se a leitura falhar (arquivo aberto direto do computador, falta de
+   internet, JSON com erro...), o site continua com a reserva acima.
+   ================================================================= */
+const DATA_FILES = {
+  site: "dados/site.json",
+  produtos: "dados/produtos.json",
+  galeria: "dados/galeria.json",
+};
+
+async function fetchJSON(url) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 5000);
+  try {
+    const res = await fetch(url, { cache: "no-cache", signal: ctrl.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function loadContentData() {
+  // aberto direto do computador (file://): não há servidor para ler os arquivos
+  if (!/^https?:$/.test(location.protocol)) return;
+  const [site, produtos, galeria] = await Promise.all(
+    Object.values(DATA_FILES).map((url) =>
+      fetchJSON(url).catch((err) => {
+        console.warn(`[ForgeLab] Não foi possível ler ${url} — usando a reserva do script.`, err);
+        return null;
+      }),
+    ),
+  );
+  const safely = (fn, data, nome) => {
+    if (!data) return;
+    try {
+      fn(data);
+    } catch (err) {
+      console.warn(`[ForgeLab] Erro ao aplicar ${nome} — usando a reserva do script.`, err);
+    }
+  };
+  safely(applySiteData, site, DATA_FILES.site);
+  safely(applyProductsData, produtos, DATA_FILES.produtos);
+  safely(applyGalleryData, galeria, DATA_FILES.galeria);
+}
+
+/* utilidades da conversão */
+const has = (v) => v !== undefined && v !== null;
+const setIf = (obj, key, value) => {
+  if (has(value)) obj[key] = value;
+};
+const toNumber = (v) => {
+  if (v === "" || !has(v)) return null;
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+};
+const TAMANHO_GALERIA = { grande: "wide", vertical: "tall" };
+const REGIOES_FRETE = {
+  mesmo_estado: "mesmoEstado",
+  sudeste: "Sudeste",
+  sul: "Sul",
+  centro_oeste: "Centro-Oeste",
+  nordeste: "Nordeste",
+  norte: "Norte",
+};
+
+/** dados/site.json → SITE_CONFIG */
+function applySiteData(d) {
+  const C = SITE_CONFIG;
+  const T = C.texts;
+  T.sections = T.sections || {};
+  const sec = (nome) => (T.sections[nome] = T.sections[nome] || {});
+
+  if (d.marca) {
+    setIf(C.brand, "name", d.marca.nome);
+    setIf(C.brand, "tagline", d.marca.frase);
+    setIf(C.brand, "logo", d.marca.logo);
+    setIf(C.brand, "fit", d.marca.logo_ajuste);
+  }
+  if (d.whatsapp) {
+    if (has(d.whatsapp.numero)) C.whatsapp.number = String(d.whatsapp.numero).replace(/\D/g, "");
+    setIf(C.whatsapp.messages, "general", d.whatsapp.mensagem_geral);
+    setIf(C.whatsapp.messages, "product", d.whatsapp.mensagem_produto);
+  }
+  if (d.inicio) {
+    setIf(T.hero, "eyebrow", d.inicio.rotulo);
+    setIf(T.hero, "title", d.inicio.titulo);
+    setIf(T.hero, "subtitle", d.inicio.subtitulo);
+    setIf(C.hero, "imageBefore", d.inicio.foto_sem_pintura || undefined);
+    setIf(C.hero, "imageAfter", d.inicio.foto_pintada || undefined);
+    setIf(C.hero, "altBefore", d.inicio.descricao_foto || undefined);
+    setIf(C.hero, "fit", d.inicio.ajuste);
+  }
+  if (d.produtos_secao) {
+    setIf(T.products, "title", d.produtos_secao.titulo);
+    setIf(T.products, "lead", d.produtos_secao.texto);
+  }
+  if (d.processo) {
+    setIf(sec("process"), "title", d.processo.titulo);
+    setIf(sec("process"), "lead", d.processo.texto);
+    setIf(sec("process"), "note", d.processo.frase_final);
+    if (Array.isArray(d.processo.etapas)) {
+      C.process = d.processo.etapas.map((e) => ({
+        title: e.titulo || "",
+        text: e.texto || "",
+        image: e.foto || "",
+        alt: e.descricao_foto || e.titulo || "",
+        fit: e.ajuste,
+      }));
+    }
+  }
+  if (d.diferenciais) {
+    setIf(sec("features"), "title", d.diferenciais.titulo);
+    setIf(sec("features"), "highlight", d.diferenciais.destaque);
+    setIf(sec("features"), "lead", d.diferenciais.texto);
+    if (Array.isArray(d.diferenciais.itens)) {
+      C.features = d.diferenciais.itens.map((i) => ({
+        icon: i.icone,
+        title: i.titulo || "",
+        text: i.texto || "",
+      }));
+    }
+  }
+  if (d.portfolio_secao) {
+    setIf(sec("gallery"), "title", d.portfolio_secao.titulo);
+    setIf(sec("gallery"), "lead", d.portfolio_secao.texto);
+  }
+  if (d.avaliacoes) {
+    const a = d.avaliacoes;
+    setIf(sec("reviews"), "title", a.titulo);
+    setIf(C.reviews, "googleReviewsUrl", a.link_google);
+    if ("nota" in a) C.reviews.rating = toNumber(a.nota);
+    if ("quantidade" in a) C.reviews.count = toNumber(a.quantidade);
+    if (Array.isArray(a.lista)) {
+      C.reviews.items = a.lista
+        .filter((r) => r && r.texto)
+        .map((r) => ({ author: r.nome || "", rating: toNumber(r.nota), text: r.texto, date: r.data || "" }));
+    }
+  }
+  if (d.contato) {
+    setIf(sec("contact"), "title", d.contato.titulo);
+    setIf(sec("contact"), "lead", d.contato.texto);
+    setIf(sec("contact"), "disclaimer", d.contato.aviso);
+  }
+  if (d.instagram) {
+    const ig = d.instagram;
+    setIf(sec("instagram"), "title", ig.titulo);
+    if (has(ig.perfil)) C.instagram.handle = String(ig.perfil).replace(/^@/, "").trim();
+    setIf(C.instagram, "url", ig.link);
+    if (Array.isArray(ig.fotos)) {
+      C.instagramGallery = ig.fotos.map((f) => ({
+        src: f.foto || "",
+        alt: f.descricao_foto || "Foto do Instagram",
+        fit: f.ajuste,
+      }));
+    }
+  }
+  if (d.frete) {
+    const f = d.frete;
+    setIf(sec("shipping"), "title", f.titulo);
+    setIf(sec("shipping"), "lead", f.texto);
+    if (has(f.estado_origem)) C.shipping.originState = String(f.estado_origem).trim().toUpperCase();
+    setIf(C.shipping, "note", f.observacao);
+    if (f.regioes) {
+      Object.entries(REGIOES_FRETE).forEach(([chave, nome]) => {
+        const r = f.regioes[chave];
+        if (!r) return;
+        C.shipping.rates[nome] = toNumber(r.valor);
+        C.shipping.deadlines[nome] = r.prazo || "";
+      });
+    }
+  }
+}
+
+/** dados/produtos.json → SITE_CONFIG.products */
+function applyProductsData(d) {
+  if (!Array.isArray(d.produtos)) return;
+  SITE_CONFIG.products = d.produtos
+    .filter((p) => p && p.nome)
+    .map((p) => ({
+      name: p.nome,
+      category: p.categoria || "",
+      description: p.descricao || "",
+      image: p.foto || "",
+      alt: p.descricao_foto || p.nome,
+      material: p.material || "",
+      technology: p.tecnologia || "",
+      finish: p.acabamento || "",
+      customization: p.personalizacao || "",
+      demo: !!p.exemplo,
+      fit: p.ajuste,
+    }));
+}
+
+/** dados/galeria.json → SITE_CONFIG.gallery */
+function applyGalleryData(d) {
+  if (!Array.isArray(d.fotos)) return;
+  SITE_CONFIG.gallery = d.fotos
+    .filter((g) => g && g.foto)
+    .map((g) => ({
+      src: g.foto,
+      alt: g.descricao_foto || g.legenda || "Foto do portfólio",
+      caption: g.legenda || "",
+      layout: TAMANHO_GALERIA[g.tamanho] || "",
+      fit: g.ajuste,
+    }));
+}
+
+/* -----------------------------------------------------------------
+   Ajuste de foto (definido no painel para cada imagem)
+   { modo: "inteira" | "preencher", zoom: 50–300, x: 0–100, y: 0–100 }
+   Aplicado com object-fit, object-position e scale — o arquivo da
+   foto não é alterado. Sem ajuste, vale o padrão do CSS.
+   ----------------------------------------------------------------- */
+function normalizeFit(fit, padrao = "preencher") {
+  if (!fit || typeof fit !== "object") return null;
+  const n = (v, min, max, def) => {
+    const x = toNumber(v);
+    return x === null ? def : Math.min(max, Math.max(min, x));
+  };
+  return {
+    modo: fit.modo === "inteira" || fit.modo === "preencher" ? fit.modo : padrao,
+    zoom: n(fit.zoom, 50, 300, 100),
+    x: n(fit.x, 0, 100, 50),
+    y: n(fit.y, 0, 100, 50),
+  };
+}
+function fitStyle(fit, padrao) {
+  const f = normalizeFit(fit, padrao);
+  if (!f) return "";
+  let css = `object-fit:${f.modo === "inteira" ? "contain" : "cover"};object-position:${f.x}% ${f.y}%;`;
+  if (f.zoom !== 100) css += `--img-scale:${f.zoom / 100};transform-origin:${f.x}% ${f.y}%;`;
+  return css;
+}
+/** atributos para usar dentro de um <img ...> montado como texto */
+function fitAttrs(fit, padrao) {
+  const css = fitStyle(fit, padrao);
+  if (!css) return "";
+  return ` style="${css}"${normalizeFit(fit, padrao).zoom !== 100 ? " data-zoom" : ""}`;
+}
+/** aplica (ou limpa) o ajuste num <img> que já existe */
+function applyFit(img, fit, padrao) {
+  ["object-fit", "object-position", "--img-scale", "transform-origin"].forEach((p) =>
+    img.style.removeProperty(p),
+  );
+  img.removeAttribute("data-zoom");
+  const css = fitStyle(fit, padrao);
+  if (!css) return;
+  img.style.cssText += css;
+  if (normalizeFit(fit, padrao).zoom !== 100) img.setAttribute("data-zoom", "");
+}
+
+/* -----------------------------------------------------------------
+   Etapas do "Como funciona" e itens dos "Diferenciais"
+   Só são remontados quando vêm do painel; sem dados, fica o HTML.
+   ----------------------------------------------------------------- */
+const FEATURE_ICONS = ["brush", "loupe", "cube", "layers", "chat", "palette", "hand", "star", "eye"];
+
+function renderProcess() {
+  const steps = SITE_CONFIG.process;
+  const ol = $(".steps");
+  if (!ol || !Array.isArray(steps) || !steps.length) return;
+  ol.innerHTML = steps
+    .map(
+      (s, i) => `
+      <li class="step" data-animate>
+        <figure class="step-media"><img data-photo src="${escapeHTML(s.image)}" alt="${escapeHTML(s.alt)}" width="900" height="750" loading="lazy" decoding="async"${fitAttrs(s.fit, "preencher")}></figure>
+        <div class="step-body">
+          <span class="step-num">${String(i + 1).padStart(2, "0")}</span>
+          <h3>${escapeHTML(s.title)}</h3>
+          <p>${escapeHTML(s.text)}</p>
+        </div>
+      </li>`,
+    )
+    .join("");
+}
+
+function renderFeatures() {
+  const items = SITE_CONFIG.features;
+  const ul = $(".features-list");
+  if (!ul || !Array.isArray(items) || !items.length) return;
+  ul.innerHTML = items
+    .map((it) => {
+      const icon = FEATURE_ICONS.includes(it.icon) ? it.icon : "cube";
+      return `<li data-animate><svg class="icon" aria-hidden="true"><use href="#i-${icon}"/></svg><div><h3>${escapeHTML(it.title)}</h3><p>${escapeHTML(it.text)}</p></div></li>`;
+    })
+    .join("");
+}
+
+/* =================================================================
    2. Utilidades
    ================================================================= */
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -450,9 +748,21 @@ function applyContent() {
   });
   document.title = `${SITE_CONFIG.brand.name} — Impressão 3D com pintura artesanal`;
 
+  // nome da marca no cabeçalho/rodapé: "FORGE" + "LAB" em roxo; outro nome aparece por inteiro
+  const brandName = (SITE_CONFIG.brand.name || "").trim();
+  if (brandName && brandName.replace(/\s+/g, "").toLowerCase() !== "forgelab") {
+    $$(".brand-name").forEach((el) => {
+      el.textContent = brandName;
+      el.setAttribute("aria-label", brandName);
+    });
+  }
+
   if (SITE_CONFIG.brand.logo) {
     $$(".brand-mark").forEach((mark) => {
       mark.innerHTML = `<img src="${escapeHTML(SITE_CONFIG.brand.logo)}" alt="" width="34" height="34">`;
+      applyFit(mark.firstElementChild, SITE_CONFIG.brand.fit, "inteira");
+      const f = normalizeFit(SITE_CONFIG.brand.fit, "inteira");
+      if (f && f.zoom > 100) mark.style.overflow = "hidden";
     });
   }
 
@@ -631,11 +941,32 @@ class PaintReveal {
     this.W = W;
     this.H = H;
 
-    // Área onde a imagem é desenhada (equivalente a object-fit: contain)
-    const scale = Math.min(W / this.imgW, H / this.imgH);
+    // Área onde as duas fotos são desenhadas. Padrão = foto inteira e centralizada
+    // (equivalente a object-fit: contain). O ajuste do painel vale para as DUAS fotos,
+    // assim elas continuam perfeitamente alinhadas.
+    const f = normalizeFit(this.opts.fit, "inteira") || { modo: "inteira", zoom: 100, x: 50, y: 50 };
+    const base =
+      f.modo === "inteira"
+        ? Math.min(W / this.imgW, H / this.imgH)
+        : Math.max(W / this.imgW, H / this.imgH);
+    const scale = (base * f.zoom) / 100;
     const fw = this.imgW * scale,
       fh = this.imgH * scale;
-    this.fit = { x: (W - fw) / 2, y: (H - fh) / 2, w: fw, h: fh };
+    this.fit = { x: ((W - fw) * f.x) / 100, y: ((H - fh) * f.y) / 100, w: fw, h: fh };
+
+    // com ajuste diferente do padrão, a foto sem pintura é posicionada no mesmo retângulo
+    const custom = f.modo !== "inteira" || f.zoom !== 100 || f.x !== 50 || f.y !== 50;
+    this.stage.classList.toggle("is-custom-fit", custom);
+    const bs = this.baseImg.style;
+    if (custom) {
+      bs.left = `${this.fit.x / dpr}px`;
+      bs.top = `${this.fit.y / dpr}px`;
+      bs.width = `${fw / dpr}px`;
+      bs.height = `${fh / dpr}px`;
+      bs.objectFit = "fill";
+    } else {
+      ["left", "top", "width", "height", "objectFit"].forEach((p) => (bs[p] = ""));
+    }
 
     this.radius = Math.max(24 * dpr, fw * this.opts.brushSize);
     this.stage.style.setProperty("--brush", `${(this.radius * 2) / dpr}px`);
@@ -956,6 +1287,10 @@ function specsHTML(p) {
 function initProducts() {
   const list = SITE_CONFIG.products;
   const track = $("[data-carousel-track]");
+  if (!list.length) {
+    hideSection("produtos"); // painel sem nenhum produto
+    return;
+  }
   const showDemo = SITE_CONFIG.showSetupNotices;
 
   track.innerHTML = list
@@ -963,7 +1298,7 @@ function initProducts() {
       (p, i) => `
     <li class="product-card" aria-roledescription="slide" aria-label="${i + 1} de ${list.length}: ${escapeHTML(p.name)}">
       <button class="product-media" type="button" data-open-product="${i}" aria-label="Ver detalhes de ${escapeHTML(p.name)}">
-        <img data-photo src="${escapeHTML(p.image)}" alt="${escapeHTML(p.alt || p.name)}" loading="lazy" decoding="async" width="900" height="750" draggable="false">
+        <img data-photo src="${escapeHTML(p.image)}" alt="${escapeHTML(p.alt || p.name)}" loading="lazy" decoding="async" width="900" height="750" draggable="false"${fitAttrs(p.fit, "preencher")}>
         ${p.category ? `<span class="tag">${escapeHTML(p.category)}</span>` : ""}
         ${p.demo && showDemo ? '<span class="tag demo-tag">Exemplo</span>' : ""}
       </button>
@@ -1153,6 +1488,7 @@ function initProductModal(list) {
     lastFocus = trigger;
     $("[data-pm-img]", dialog).src = p.image;
     $("[data-pm-img]", dialog).alt = p.alt || p.name;
+    applyFit($("[data-pm-img]", dialog), p.fit, "preencher");
     $("[data-pm-category]", dialog).textContent = p.category || "";
     $("[data-pm-title]", dialog).textContent = p.name;
     $("[data-pm-desc]", dialog).textContent = p.description || "";
@@ -1171,12 +1507,16 @@ function initProductModal(list) {
 function initGallery() {
   const items = SITE_CONFIG.gallery;
   const grid = $("[data-gallery]");
+  if (!items.length) {
+    hideSection("galeria"); // painel sem nenhuma foto no portfólio
+    return;
+  }
   grid.innerHTML = items
     .map(
       (it, i) => `
     <li class="gallery-item fit-contain ${it.layout ? `is-${it.layout}` : ""} ${it.light ? "is-light" : ""}" data-animate>
       <button type="button" data-lb-index="${i}" aria-label="Ampliar: ${escapeHTML(it.caption || it.alt)}">
-        <img data-photo src="${escapeHTML(it.src)}" alt="${escapeHTML(it.alt)}" loading="lazy" decoding="async">
+        <img data-photo src="${escapeHTML(it.src)}" alt="${escapeHTML(it.alt)}" loading="lazy" decoding="async"${fitAttrs(it.fit, "preencher")}>
         <span class="zoom" aria-hidden="true"><svg class="icon"><use href="#i-expand"/></svg></span>
         ${it.caption ? `<span class="cap">${escapeHTML(it.caption)}</span>` : ""}
       </button>
@@ -1411,7 +1751,7 @@ function initInstagram() {
   strip.innerHTML = SITE_CONFIG.instagramGallery
     .map(
       (g) =>
-        `<li><img data-photo src="${escapeHTML(g.src)}" alt="${escapeHTML(g.alt)}" loading="lazy" decoding="async"></li>`,
+        `<li><img data-photo src="${escapeHTML(g.src)}" alt="${escapeHTML(g.alt)}" loading="lazy" decoding="async"${fitAttrs(g.fit, "preencher")}></li>`,
     )
     .join("");
 
@@ -1813,7 +2153,9 @@ function initStepsLine() {
   io.observe(steps);
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function startSite() {
+  renderProcess();
+  renderFeatures();
   applyContent();
   checkExistingPhotos();
   initHeader();
@@ -1830,4 +2172,12 @@ document.addEventListener("DOMContentLoaded", () => {
   initShipping();
   initActiveNav();
   initStepsLine();
+}
+
+// Primeiro lê o conteúdo do painel (dados/*.json); depois monta o site.
+// Se a leitura falhar, o site usa os valores de reserva do SITE_CONFIG.
+document.addEventListener("DOMContentLoaded", () => {
+  loadContentData()
+    .catch((err) => console.warn("[ForgeLab] Usando o conteúdo de reserva.", err))
+    .finally(startSite);
 });
