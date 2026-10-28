@@ -1,112 +1,130 @@
 {
   "produtos": [
     {
-      "nome": "Miniaturas e personagens",
-      "categoria": "Miniaturas",
-      "descricao": "Personagens e criaturas em pequena escala, com pintura detalhada à mão.",
+      "personalizacao": "",
       "foto": "assets/images/mikasa.png",
-      "descricao_foto": "Miniatura pintada à mão",
+      "material": "",
+      "tecnologia": "",
+      "descricao": "Personagens e criaturas em pequena escala, com pintura detalhada à mão.",
+      "acabamento": "Pintura manual",
+      "categoria": "Miniaturas",
       "ajuste": {
         "modo": "preencher",
         "zoom": 100,
         "x": 50,
         "y": 50
       },
-      "material": "",
-      "tecnologia": "",
-      "acabamento": "Pintura manual",
-      "personalizacao": "",
-      "exemplo": true
+      "exemplo": true,
+      "nome": "Miniaturas e personagens",
+      "descricao_foto": "Miniatura pintada à mão"
     },
     {
-      "nome": "Estatuetas decorativas",
-      "categoria": "Decoração",
-      "descricao": "Peças para estantes, mesas e ambientes, com acabamento pensado para exposição.",
+      "personalizacao": "",
       "foto": "assets/images/est.png",
-      "descricao_foto": "Estatueta decorativa pintada à mão",
+      "material": "",
+      "tecnologia": "",
+      "descricao": "Peças para estantes, mesas e ambientes, com acabamento pensado para exposição.",
+      "acabamento": "Pintura manual",
+      "categoria": "Decoração",
       "ajuste": {
         "modo": "preencher",
         "zoom": 100,
         "x": 50,
         "y": 50
       },
-      "material": "",
-      "tecnologia": "",
-      "acabamento": "Pintura manual",
-      "personalizacao": "",
-      "exemplo": true
+      "exemplo": true,
+      "nome": "Estatuetas decorativas",
+      "descricao_foto": "Estatueta decorativa pintada à mão"
     },
     {
-      "nome": "Action figures e colecionáveis",
-      "categoria": "Carlos",
-      "descricao": "Carlos",
+      "personalizacao": "",
       "foto": "assets/images/carlos.png",
-      "descricao_foto": "Figura colecionável pintada à mão",
+      "material": "",
+      "tecnologia": "",
+      "descricao": "Carlos",
+      "acabamento": "Pintura manual",
+      "categoria": "Carlos",
       "ajuste": {
         "modo": "preencher",
         "zoom": 100,
         "x": 50,
         "y": 50
       },
-      "material": "",
-      "tecnologia": "",
-      "acabamento": "Pintura manual",
-      "personalizacao": "",
-      "exemplo": true
+      "exemplo": true,
+      "nome": "Action figures e colecionáveis",
+      "descricao_foto": "Figura colecionável pintada à mão"
     },
     {
-      "nome": "Esculturas personalizadas",
-      "categoria": "Personalizados",
-      "descricao": "Sua ideia transformada em escultura: do modelo à pintura, definida com você.",
+      "personalizacao": "Cores e detalhes sob consulta",
       "foto": "assets/images/produto-4.webp",
-      "descricao_foto": "Escultura personalizada pintada à mão",
+      "material": "",
+      "tecnologia": "",
+      "descricao": "Sua ideia transformada em escultura: do modelo à pintura, definida com você.",
+      "acabamento": "Pintura manual",
+      "categoria": "Personalizados",
       "ajuste": {
         "modo": "preencher",
         "zoom": 100,
         "x": 50,
         "y": 50
       },
-      "material": "",
-      "tecnologia": "",
-      "acabamento": "Pintura manual",
-      "personalizacao": "Cores e detalhes sob consulta",
-      "exemplo": true
+      "exemplo": true,
+      "nome": "Esculturas personalizadas",
+      "descricao_foto": "Escultura personalizada pintada à mão"
     },
     {
-      "nome": "Presentes personalizados",
-      "categoria": "Presentes",
-      "descricao": "Uma peça pensada para alguém, com cores e detalhes que tornam o presente único.",
+      "personalizacao": "Cores e detalhes sob consulta",
       "foto": "assets/images/produto-5.webp",
-      "descricao_foto": "Presente personalizado impresso em 3D e pintado",
+      "material": "",
+      "tecnologia": "",
+      "descricao": "Uma peça pensada para alguém, com cores e detalhes que tornam o presente único.",
+      "acabamento": "Pintura manual",
+      "categoria": "Presentes",
       "ajuste": {
         "modo": "preencher",
         "zoom": 100,
         "x": 50,
         "y": 50
       },
-      "material": "",
-      "tecnologia": "",
-      "acabamento": "Pintura manual",
-      "personalizacao": "Cores e detalhes sob consulta",
-      "exemplo": true
+      "exemplo": true,
+      "nome": "Presentes personalizados",
+      "descricao_foto": "Presente personalizado impresso em 3D e pintado"
     },
     {
-      "nome": "Peças sob encomenda",
-      "categoria": "Sob encomenda",
-      "descricao": "Tem uma ideia, um personagem ou um arquivo 3D? Avaliamos o projeto e indicamos o melhor caminho.",
+      "personalizacao": "Definida conforme o projeto",
       "foto": "assets/images/produto-6.webp",
-      "descricao_foto": "Peça produzida sob encomenda",
+      "material": "",
+      "tecnologia": "",
+      "descricao": "Tem uma ideia, um personagem ou um arquivo 3D? Avaliamos o projeto e indicamos o melhor caminho.",
+      "acabamento": "",
+      "categoria": "Sob encomenda",
       "ajuste": {
         "modo": "preencher",
         "zoom": 100,
         "x": 50,
         "y": 50
       },
-      "material": "",
-      "tecnologia": "",
-      "acabamento": "",
-      "personalizacao": "Definida conforme o projeto",
-      "exemplo": true
+      "exemplo": true,
+      "nome": "Peças sob encomenda",
+      "descricao_foto": "Peça produzida sob encomenda"
+    },
+    {
+      "personalizacao": "aa",
+      "foto": "assets/images/forgelab-icon.png",
+      "material": "aa",
+      "tecnologia": "aa",
+      "descricao": "teste",
+      "acabamento": "aa",
+      "categoria": "teste",
+      "ajuste": {
+        "modo": "preencher",
+        "zoom": 100,
+        "x": 50,
+        "y": 50
+      },
+      "exemplo": true,
+      "nome": "teste",
+      "descricao_foto": "aaa"
     }
   ]
 }
