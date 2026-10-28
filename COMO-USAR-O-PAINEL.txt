@@ -5,7 +5,7 @@
 Com o painel você muda textos, produtos e fotos do site sozinha,
 sem mexer em código. Tudo pelo navegador (computador ou celular).
 
-Endereço do painel:   https://forgelab.vercel.app/admin
+Endereço do painel:   https://forgelab-sandy.vercel.app/admin
 
 
 ----------------------------------------------------------------
@@ -23,7 +23,7 @@ Pronto: a partir daí você já pode entrar no painel.
 1. ENTRAR
 ----------------------------------------------------------------
 
-1. Abra https://forgelab.vercel.app/admin
+1. Abra https://forgelab-sandy.vercel.app/admin
 2. Clique em "Entrar com GitHub".
 3. Abre uma janelinha do GitHub. Na primeira vez, clique em
    "Authorize" (Autorizar). A janelinha fecha sozinha.

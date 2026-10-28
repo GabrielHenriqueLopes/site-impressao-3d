@@ -18,7 +18,7 @@ backend:
   name: github
   repo: GabrielHenriqueLopes/site-impressao-3d
   branch: main
-  base_url: "https://forgelab.vercel.app"
+  base_url: "https://forgelab-sandy.vercel.app"
   auth_endpoint: api/auth
   commit_messages:
     create: "Painel: cria {{collection}} “{{slug}}”"
@@ -27,8 +27,8 @@ backend:
     uploadMedia: "Painel: envia a foto “{{path}}”"
     deleteMedia: "Painel: apaga a foto “{{path}}”"
 locale: pt
-site_url: "https://forgelab.vercel.app"
-display_url: "https://forgelab.vercel.app"
+site_url: "https://forgelab-sandy.vercel.app"
+display_url: "https://forgelab-sandy.vercel.app"
 logo_url: /assets/images/forgelab-icon.png
 media_folder: site-impressao-3d/assets/images
 public_folder: assets/images

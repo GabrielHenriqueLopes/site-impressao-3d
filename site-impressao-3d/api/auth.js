@@ -15,7 +15,7 @@ const crypto = require("crypto");
 
 const STATE_COOKIE = "decap_oauth_state";
 
-/** endereço do site que recebeu o pedido (ex.: https://forgelab.vercel.app) */
+/** endereço do site que recebeu o pedido (ex.: https://forgelab-sandy.vercel.app) */
 function siteOrigin(req) {
   // na Vercel o cabeçalho x-forwarded-proto sempre vem ("https")
   const proto = String(

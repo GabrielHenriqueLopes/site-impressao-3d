@@ -2,8 +2,10 @@
  PAINEL DE CONTEÚDO DA FORGELAB — GUIA DE CONFIGURAÇÃO (para o Gabriel)
 ================================================================
 
-Site:    https://forgelab.vercel.app
-Painel:  https://forgelab.vercel.app/admin
+Site:    https://forgelab-sandy.vercel.app
+         (ATENÇÃO: forgelab.vercel.app — sem o "-sandy" — é o site de
+         OUTRA pessoa. Nunca digite senha lá.)
+Painel:  https://forgelab-sandy.vercel.app/admin
 Repo:    https://github.com/GabrielHenriqueLopes/site-impressao-3d
 
 
@@ -100,8 +102,8 @@ C) Criar o OAuth App no GitHub
    GitHub -> foto do perfil -> Settings -> Developer settings
    -> OAuth Apps -> New OAuth App
      Application name:            Painel ForgeLab
-     Homepage URL:                https://forgelab.vercel.app
-     Authorization callback URL:  https://forgelab.vercel.app/api/callback
+     Homepage URL:                https://forgelab-sandy.vercel.app
+     Authorization callback URL:  https://forgelab-sandy.vercel.app/api/callback
      Enable Device Flow:          DESMARCADO
    -> Register application
    -> copie o Client ID
@@ -118,7 +120,7 @@ D) Criar as variáveis na Vercel
    (Variáveis novas só valem depois de um novo deploy.)
 
 E) Testar
-   1. Abra https://forgelab.vercel.app/admin  (e também /admin/ )
+   1. Abra https://forgelab-sandy.vercel.app/admin  (e também /admin/ )
    2. "Entrar com GitHub" -> autorize -> o painel abre.
    3. Teste de ponta a ponta: em "Informações do site" > Tela principal,
       mude uma palavra do subtítulo -> Publicar -> Publicar agora.
@@ -171,11 +173,11 @@ F) Dar acesso ao cliente
 
 GitHub mostra "redirect_uri is not associated with this application"
    -> o callback do OAuth App não é exatamente
-      https://forgelab.vercel.app/api/callback  (sem barra no final).
+      https://forgelab-sandy.vercel.app/api/callback  (sem barra no final).
 
 Janela de login abre e fecha mas o painel não entra
    -> está acessando o painel por outro endereço (ex.: link de preview).
-      Use https://forgelab.vercel.app/admin.
+      Use https://forgelab-sandy.vercel.app/admin.
 
 /api/auth dá 404
    -> o Root Directory da Vercel não é site-impressao-3d (passo B).
